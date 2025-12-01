@@ -404,7 +404,8 @@ class EndToEndDashboardWorkflowTest(TestCase):
         """
         self.client.login(username='dashboard_user', password='testpass123')
         
-        dashboard_url = reverse('dashboard')
+        # Use dashboard_old URL since the main dashboard now uses the new UI
+        dashboard_url = reverse('dashboard_old')
         response = self.client.get(dashboard_url)
         
         self.assertEqual(response.status_code, 200)
@@ -441,7 +442,8 @@ class EndToEndDashboardWorkflowTest(TestCase):
         """Test that dashboard chart data is accurate"""
         self.client.login(username='dashboard_user', password='testpass123')
         
-        dashboard_url = reverse('dashboard')
+        # Use dashboard_old URL since the main dashboard now uses the new UI
+        dashboard_url = reverse('dashboard_old')
         response = self.client.get(dashboard_url)
         
         # Verify invoice per day data

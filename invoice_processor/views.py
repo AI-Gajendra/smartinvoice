@@ -141,6 +141,162 @@ def dashboard(request):
 
 
 @login_required
+def dashboard_new(request):
+    """
+    New Dashboard view with glassmorphism design
+    Provides metrics for: Total Revenue, Invoices Sent, Pending Amount, Clients Count
+    Also provides chart data and recent invoices/transactions
+    """
+    import json
+    from dateutil.relativedelta import relativedelta
+    
+    # Current month date range
+    now = timezone.now()
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Previous month date range for comparison
+    prev_month_start = (current_month_start - relativedelta(months=1))
+    prev_month_end = current_month_start - timedelta(seconds=1)
+    
+    # Get user's invoices
+    user_invoices = Invoice.objects.filter(uploaded_by=request.user)
+    
+    # ===== METRIC 1: Total Revenue =====
+    total_revenue = user_invoices.aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+    
+    # Previous month revenue for comparison
+    prev_month_revenue = user_invoices.filter(
+        uploaded_at__gte=prev_month_start,
+        uploaded_at__lte=prev_month_end
+    ).aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+    
+    # Current month revenue
+    current_month_revenue = user_invoices.filter(
+        uploaded_at__gte=current_month_start
+    ).aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+    
+    # Calculate revenue change percentage
+    if prev_month_revenue > 0:
+        revenue_change = float((current_month_revenue - prev_month_revenue) / prev_month_revenue * 100)
+    else:
+        revenue_change = 100.0 if current_month_revenue > 0 else 0.0
+    
+    # ===== METRIC 2: Invoices Sent (Count) =====
+    invoices_count = user_invoices.count()
+    
+    # Previous month invoice count
+    prev_month_invoices = user_invoices.filter(
+        uploaded_at__gte=prev_month_start,
+        uploaded_at__lte=prev_month_end
+    ).count()
+    
+    # Current month invoice count
+    current_month_invoices = user_invoices.filter(
+        uploaded_at__gte=current_month_start
+    ).count()
+    
+    # Calculate invoices change percentage
+    if prev_month_invoices > 0:
+        invoices_change = float((current_month_invoices - prev_month_invoices) / prev_month_invoices * 100)
+    else:
+        invoices_change = 100.0 if current_month_invoices > 0 else 0.0
+    
+    # ===== METRIC 3: Pending Amount =====
+    pending_amount = user_invoices.filter(
+        status__in=['PENDING_ANALYSIS', 'HAS_ANOMALIES']
+    ).aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+    
+    # Previous month pending
+    prev_month_pending = user_invoices.filter(
+        uploaded_at__gte=prev_month_start,
+        uploaded_at__lte=prev_month_end,
+        status__in=['PENDING_ANALYSIS', 'HAS_ANOMALIES']
+    ).aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+    
+    # Current month pending
+    current_month_pending = user_invoices.filter(
+        uploaded_at__gte=current_month_start,
+        status__in=['PENDING_ANALYSIS', 'HAS_ANOMALIES']
+    ).aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+    
+    # Calculate pending change percentage
+    if prev_month_pending > 0:
+        pending_change = float((current_month_pending - prev_month_pending) / prev_month_pending * 100)
+    else:
+        pending_change = 100.0 if current_month_pending > 0 else 0.0
+    
+    # ===== METRIC 4: Clients Count (unique vendors) =====
+    clients_count = user_invoices.exclude(
+        vendor_name__isnull=True
+    ).exclude(
+        vendor_name=''
+    ).values('vendor_name').distinct().count()
+    
+    # Previous month clients
+    prev_month_clients = user_invoices.filter(
+        uploaded_at__gte=prev_month_start,
+        uploaded_at__lte=prev_month_end
+    ).exclude(vendor_name__isnull=True).exclude(vendor_name='').values('vendor_name').distinct().count()
+    
+    # Current month clients
+    current_month_clients = user_invoices.filter(
+        uploaded_at__gte=current_month_start
+    ).exclude(vendor_name__isnull=True).exclude(vendor_name='').values('vendor_name').distinct().count()
+    
+    # Calculate clients change percentage
+    if prev_month_clients > 0:
+        clients_change = float((current_month_clients - prev_month_clients) / prev_month_clients * 100)
+    else:
+        clients_change = 100.0 if current_month_clients > 0 else 0.0
+    
+    # ===== CHART DATA: Revenue by Month (last 7 months) =====
+    chart_labels = []
+    chart_data = []
+    
+    for i in range(6, -1, -1):
+        month_date = now - relativedelta(months=i)
+        month_start = month_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if i > 0:
+            month_end = (month_start + relativedelta(months=1)) - timedelta(seconds=1)
+        else:
+            month_end = now
+        
+        month_revenue = user_invoices.filter(
+            uploaded_at__gte=month_start,
+            uploaded_at__lte=month_end
+        ).aggregate(total=Sum('grand_total'))['total'] or Decimal('0')
+        
+        chart_labels.append(month_date.strftime('%b'))
+        chart_data.append(float(month_revenue))
+    
+    # ===== RECENT INVOICES (4 most recent) =====
+    recent_invoices = user_invoices.select_related('health_score').order_by('-uploaded_at')[:4]
+    
+    # ===== TRANSACTIONS (5 most recent for table) =====
+    transactions = user_invoices.select_related('health_score').order_by('-uploaded_at')[:5]
+    
+    context = {
+        # Metric cards data
+        'total_revenue': total_revenue,
+        'revenue_change': revenue_change,
+        'invoices_count': invoices_count,
+        'invoices_change': invoices_change,
+        'pending_amount': pending_amount,
+        'pending_change': pending_change,
+        'clients_count': clients_count,
+        'clients_change': clients_change,
+        # Chart data
+        'chart_labels': json.dumps(chart_labels),
+        'chart_data': json.dumps(chart_data),
+        # Recent invoices and transactions
+        'recent_invoices': recent_invoices,
+        'transactions': transactions,
+    }
+    
+    return render(request, 'dashboard_new.html', context)
+
+
+@login_required
 @require_http_methods(["GET"])
 def dashboard_analytics_api(request):
     """
@@ -216,7 +372,7 @@ def login_view(request):
     else:
         form = CustomAuthenticationForm()
     
-    return render(request, 'registration/login.html', {'form': form})
+    return render(request, 'registration/login_new.html', {'form': form})
 
 
 def register_view(request):
@@ -634,6 +790,65 @@ def gst_verification(request):
 
 
 @login_required
+def invoices_new(request):
+    """
+    New Invoices page with glassmorphism design
+    Supports filtering by status: all, paid, pending, overdue
+    Supports filtering by vendor name (for client profile view)
+    Requirements: 4.1, 4.2, 4.4, 4.5
+    """
+    # Get filter parameters
+    status_filter = request.GET.get('status', 'all')
+    vendor_filter = request.GET.get('vendor', '')
+    
+    # Base queryset for user's invoices
+    invoices_qs = Invoice.objects.filter(
+        uploaded_by=request.user
+    ).select_related('health_score').prefetch_related('duplicate_link')
+    
+    # Apply vendor filter if provided (for client profile view)
+    if vendor_filter:
+        invoices_qs = invoices_qs.filter(vendor_name=vendor_filter)
+    
+    # Apply status filter based on the new UI requirements
+    # Map UI status to database status:
+    # - paid: CLEARED status or VERIFIED gst_verification_status
+    # - pending: PENDING_ANALYSIS status
+    # - overdue: HAS_ANOMALIES status or FAILED gst_verification_status
+    if status_filter == 'paid':
+        invoices_qs = invoices_qs.filter(
+            Q(status='CLEARED') | Q(gst_verification_status='VERIFIED')
+        )
+    elif status_filter == 'pending':
+        invoices_qs = invoices_qs.filter(
+            status='PENDING_ANALYSIS',
+            gst_verification_status='PENDING'
+        )
+    elif status_filter == 'overdue':
+        invoices_qs = invoices_qs.filter(
+            Q(status='HAS_ANOMALIES') | Q(gst_verification_status='FAILED')
+        )
+    # 'all' shows all invoices (no additional filter)
+    
+    # Order by most recent first
+    invoices_qs = invoices_qs.order_by('-uploaded_at')
+    
+    # Pagination - 10 rows per page
+    paginator = Paginator(invoices_qs, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'vendor_filter': vendor_filter,
+        'total_count': invoices_qs.count(),
+    }
+    
+    return render(request, 'invoices_new.html', context)
+
+
+@login_required
 @require_http_methods(["POST"])
 def check_gst_cache(request):
     """
@@ -1030,7 +1245,7 @@ def invoice_detail(request, invoice_id):
         'duplicate_invoices': duplicate_invoices,
     }
     
-    return render(request, 'invoice_detail.html', context)
+    return render(request, 'invoice_detail_new.html', context)
 
 
 @login_required
@@ -1659,7 +1874,7 @@ def delete_profile_picture(request):
 def settings(request):
     """
     Comprehensive settings page for managing account, preferences, and connected services
-    Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6
+    Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
     """
     from .services.user_profile_service import user_profile_service
     
@@ -1673,6 +1888,7 @@ def settings(request):
             last_name = request.POST.get('last_name', '').strip()
             username = request.POST.get('username', '').strip()
             email = request.POST.get('email', '').strip()
+            bio = request.POST.get('bio', '').strip()
             
             # Validate username uniqueness (if changed)
             if username != request.user.username:
@@ -1713,6 +1929,9 @@ def settings(request):
                     messages.error(request, error)
                     return redirect('settings')
             
+            # Update bio
+            profile.bio = bio
+            
             # Update connected services (placeholder for future OAuth integration)
             profile.facebook_connected = 'facebook_connected' in request.POST
             profile.google_connected = 'google_connected' in request.POST
@@ -1732,8 +1951,8 @@ def settings(request):
             messages.error(request, 'An error occurred while updating settings. Please try again.')
             return redirect('settings')
     
-    # GET request - render settings page
-    return render(request, 'settings.html')
+    # GET request - render settings page with new template
+    return render(request, 'settings_new.html')
 
 
 @login_required
@@ -1927,6 +2146,201 @@ def delete_account(request):
 
 
 @login_required
+def clients_new(request):
+    """
+    New Clients page with glassmorphism design
+    Displays clients as cards in a responsive grid layout
+    Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+    """
+    from django.db.models import Count, Max
+    from datetime import timedelta
+    
+    # Get unique vendors (clients) from user's invoices
+    # Aggregate data: vendor name, GSTIN, invoice count, last activity
+    clients_data = Invoice.objects.filter(
+        uploaded_by=request.user
+    ).exclude(
+        vendor_name__isnull=True
+    ).exclude(
+        vendor_name=''
+    ).values('vendor_name', 'vendor_gstin').annotate(
+        invoice_count=Count('id'),
+        last_invoice_date=Max('uploaded_at')
+    ).order_by('-last_invoice_date')
+    
+    # Process clients data to add computed fields
+    clients = []
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    
+    for client_data in clients_data:
+        # Determine if client is active (had invoice in last 30 days)
+        is_active = client_data['last_invoice_date'] >= thirty_days_ago if client_data['last_invoice_date'] else False
+        
+        clients.append({
+            'vendor_name': client_data['vendor_name'],
+            'gstin': client_data['vendor_gstin'],
+            'invoice_count': client_data['invoice_count'],
+            'last_invoice_date': client_data['last_invoice_date'],
+            'is_active': is_active,
+            # Placeholder fields - can be extended with a proper Client model
+            'email': None,
+            'phone': None,
+        })
+    
+    context = {
+        'clients': clients,
+    }
+    
+    return render(request, 'clients_new.html', context)
+
+
+@login_required
+def products_new(request):
+    """
+    New Products page with glassmorphism design
+    Displays products extracted from invoice line items in a table format
+    Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+    """
+    from django.db.models import Avg, Count, Max
+    
+    # Get unique products from user's invoice line items
+    # Aggregate data: description, HSN/SAC code, average unit price, usage count
+    products_data = LineItem.objects.filter(
+        invoice__uploaded_by=request.user
+    ).exclude(
+        description__isnull=True
+    ).exclude(
+        description=''
+    ).values('normalized_key', 'description', 'hsn_sac_code').annotate(
+        avg_unit_price=Avg('unit_price'),
+        usage_count=Count('id'),
+        last_used=Max('invoice__uploaded_at')
+    ).order_by('-usage_count', '-last_used')
+    
+    # Define icon styles for cycling through products (using color index for CSS)
+    icon_styles = [
+        {'color_index': 0, 'icon': 'fa-box'},       # Blue
+        {'color_index': 1, 'icon': 'fa-cube'},      # Purple
+        {'color_index': 2, 'icon': 'fa-cubes'},     # Orange
+        {'color_index': 3, 'icon': 'fa-tag'},       # Green
+        {'color_index': 4, 'icon': 'fa-gift'},      # Pink
+        {'color_index': 5, 'icon': 'fa-cart-shopping'},  # Cyan
+    ]
+    
+    # Process products data to add computed fields
+    products = []
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    
+    for idx, product_data in enumerate(products_data):
+        # Determine if product is available (used in last 30 days)
+        is_available = product_data['last_used'] >= thirty_days_ago if product_data['last_used'] else False
+        
+        # Get icon style based on index (cycle through styles)
+        style = icon_styles[idx % len(icon_styles)]
+        
+        products.append({
+            'name': product_data['description'],
+            'normalized_key': product_data['normalized_key'],
+            'hsn_sac_code': product_data['hsn_sac_code'],
+            'description': f"Used in {product_data['usage_count']} invoice(s)",
+            'unit_price': product_data['avg_unit_price'] or 0,
+            'usage_count': product_data['usage_count'],
+            'last_used': product_data['last_used'],
+            'is_available': is_available,
+            'icon': style['icon'],
+            'color_index': style['color_index'],
+        })
+    
+    context = {
+        'products': products,
+    }
+    
+    return render(request, 'products_new.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_product(request):
+    """
+    API endpoint to update product details across all line items
+    Updates HSN/SAC code and unit price for all line items with matching normalized_key
+    Requirements: 6.5
+    """
+    try:
+        data = json.loads(request.body)
+        normalized_key = data.get('normalized_key', '').strip()
+        hsn_sac_code = data.get('hsn_sac_code', '').strip()
+        unit_price = data.get('unit_price')
+        
+        if not normalized_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'Product identifier is required'
+            }, status=400)
+        
+        # Validate unit price if provided
+        if unit_price is not None:
+            try:
+                unit_price = Decimal(str(unit_price))
+                if unit_price < 0:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Unit price cannot be negative'
+                    }, status=400)
+            except (ValueError, TypeError, decimal.InvalidOperation):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid unit price format'
+                }, status=400)
+        
+        # Get all line items for this product belonging to the user
+        line_items = LineItem.objects.filter(
+            invoice__uploaded_by=request.user,
+            normalized_key=normalized_key
+        )
+        
+        if not line_items.exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Product not found'
+            }, status=404)
+        
+        # Update line items
+        update_fields = {}
+        if hsn_sac_code:
+            update_fields['hsn_sac_code'] = hsn_sac_code
+        if unit_price is not None:
+            update_fields['unit_price'] = unit_price
+        
+        if update_fields:
+            updated_count = line_items.update(**update_fields)
+            logger.info(f"Updated {updated_count} line items for product {normalized_key}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Product updated successfully ({updated_count} line items updated)',
+                'updated_count': updated_count
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No fields to update'
+            }, status=400)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        logger.error(f"Error updating product: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred while updating the product'
+        }, status=500)
+
+
+@login_required
 def coming_soon(request):
     """
     Coming Soon page for features under development
@@ -1997,3 +2411,180 @@ def coming_soon(request):
     }
     
     return render(request, 'coming_soon.html', context)
+
+
+@login_required
+def invoice_create(request):
+    """
+    Invoice Creation page with glassmorphism design
+    Handles both GET (display form) and POST (create invoice)
+    Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7
+    """
+    from datetime import date
+    
+    if request.method == 'POST':
+        try:
+            # Get form action (draft or send)
+            action = request.POST.get('action', 'draft')
+            
+            # Get invoice details
+            invoice_number = request.POST.get('invoice_number', '')
+            invoice_date_str = request.POST.get('invoice_date', '')
+            due_date_str = request.POST.get('due_date', '')
+            vendor_gstin = request.POST.get('vendor_gstin', '')
+            currency = request.POST.get('currency', 'INR')
+            notes = request.POST.get('notes', '')
+            
+            # Get client information
+            contact_person = request.POST.get('contact_person', '')
+            client_email = request.POST.get('client_email', '')
+            billing_address = request.POST.get('billing_address', '')
+            
+            # Get totals
+            grand_total = Decimal(request.POST.get('grand_total', '0'))
+            
+            # Parse dates
+            invoice_date = None
+            due_date = None
+            
+            if invoice_date_str:
+                try:
+                    invoice_date = datetime.strptime(invoice_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+            
+            if due_date_str:
+                try:
+                    due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+            
+            # Create invoice with transaction
+            with transaction.atomic():
+                # Determine status based on action
+                status = 'PENDING_ANALYSIS' if action == 'draft' else 'CLEARED'
+                
+                # Create the invoice
+                invoice = Invoice.objects.create(
+                    invoice_id=invoice_number,
+                    invoice_date=invoice_date or date.today(),
+                    vendor_name=contact_person or 'Manual Entry',
+                    vendor_gstin=vendor_gstin.upper() if vendor_gstin else '',
+                    billed_company_gstin='',  # Can be filled from user profile
+                    grand_total=grand_total,
+                    status=status,
+                    gst_verification_status='PENDING',
+                    uploaded_by=request.user,
+                    extraction_method='MANUAL',
+                    ai_confidence_score=Decimal('100.00')  # Manual entry = 100% confidence
+                )
+                
+                # Process line items
+                item_index = 1
+                while True:
+                    description = request.POST.get(f'items[{item_index}][description]')
+                    if not description:
+                        break
+                    
+                    hsn_sac = request.POST.get(f'items[{item_index}][hsn_sac]', '')
+                    quantity = Decimal(request.POST.get(f'items[{item_index}][quantity]', '1'))
+                    unit_price = Decimal(request.POST.get(f'items[{item_index}][unit_price]', '0'))
+                    tax_rate = Decimal(request.POST.get(f'items[{item_index}][tax_rate]', '18'))
+                    
+                    # Calculate line total
+                    subtotal = quantity * unit_price
+                    tax_amount = subtotal * (tax_rate / Decimal('100'))
+                    line_total = subtotal + tax_amount
+                    
+                    # Create line item
+                    LineItem.objects.create(
+                        invoice=invoice,
+                        description=description,
+                        normalized_key=normalize_product_key(description),
+                        hsn_sac_code=hsn_sac,
+                        quantity=quantity,
+                        unit_price=unit_price,
+                        billed_gst_rate=tax_rate,
+                        line_total=line_total
+                    )
+                    
+                    item_index += 1
+                
+                # Calculate and store health score
+                try:
+                    health_engine = InvoiceHealthScoreEngine()
+                    health_result = health_engine.calculate_health_score(invoice)
+                    
+                    InvoiceHealthScore.objects.create(
+                        invoice=invoice,
+                        overall_score=Decimal(str(health_result['score'])),
+                        status=health_result['status'],
+                        data_completeness_score=Decimal(str(health_result['breakdown']['data_completeness'])),
+                        verification_score=Decimal(str(health_result['breakdown']['verification'])),
+                        compliance_score=Decimal(str(health_result['breakdown']['compliance'])),
+                        fraud_detection_score=Decimal(str(health_result['breakdown']['fraud_detection'])),
+                        ai_confidence_score_component=Decimal(str(health_result['breakdown']['ai_confidence'])),
+                        key_flags=health_result['key_flags']
+                    )
+                except Exception as e:
+                    logger.error(f"Error calculating health score for manual invoice: {str(e)}")
+                
+                # Success message based on action
+                if action == 'send':
+                    messages.success(request, f'Invoice {invoice_number} has been created and sent successfully!')
+                else:
+                    messages.success(request, f'Invoice {invoice_number} has been saved as draft.')
+                
+                # Redirect to invoice detail page
+                return redirect('invoice_detail', invoice_id=invoice.id)
+        
+        except Exception as e:
+            logger.error(f"Error creating invoice: {str(e)}")
+            messages.error(request, f'Error creating invoice: {str(e)}')
+            return redirect('invoice_create')
+    
+    # GET request - display form
+    # Generate next invoice number
+    last_invoice = Invoice.objects.filter(
+        uploaded_by=request.user,
+        invoice_id__startswith='INV-'
+    ).order_by('-id').first()
+    
+    if last_invoice and last_invoice.invoice_id.startswith('INV-'):
+        try:
+            last_num = int(last_invoice.invoice_id.replace('INV-', ''))
+            next_invoice_number = f"{last_num + 1:05d}"
+        except ValueError:
+            next_invoice_number = '00001'
+    else:
+        next_invoice_number = '00001'
+    
+    # Get unique clients (vendors) from user's invoices
+    clients = Invoice.objects.filter(
+        uploaded_by=request.user
+    ).exclude(
+        vendor_name__isnull=True
+    ).exclude(
+        vendor_name=''
+    ).values('vendor_name', 'vendor_gstin').annotate(
+        id=Count('id')
+    ).order_by('vendor_name').distinct()
+    
+    # Transform to list of dicts with proper structure
+    clients_list = [
+        {
+            'id': idx + 1,
+            'name': client['vendor_name'],
+            'email': '',  # Not stored in current model
+            'address': f"GSTIN: {client['vendor_gstin']}" if client['vendor_gstin'] else ''
+        }
+        for idx, client in enumerate(clients)
+    ]
+    
+    context = {
+        'next_invoice_number': next_invoice_number,
+        'today': date.today(),
+        'clients': clients_list,
+    }
+    
+    return render(request, 'invoice_create_new.html', context)

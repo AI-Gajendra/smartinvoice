@@ -1,0 +1,499 @@
+{% extends 'base_new.html' %}
+
+{% block title %}Invoice {{ invoice.invoice_id }} - Smart iInvoice{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-3">
+    <!-- Send Invoice Button -->
+    <button class="px-5 py-2.5 glass-panel text-gray-600 rounded-xl text-sm font-bold hover:bg-white/60 transition-colors shadow-sm flex items-center gap-2">
+        <i class="fa-solid fa-paper-plane text-primary"></i> Send Invoice
+    </button>
+    <!-- Download PDF Button -->
+    <button class="px-5 py-2.5 glass-panel text-gray-600 rounded-xl text-sm font-bold hover:bg-white/60 transition-colors shadow-sm flex items-center gap-2">
+        <i class="fa-solid fa-download text-primary"></i> Download PDF
+    </button>
+    <!-- Edit Invoice Button -->
+    <a href="{% url 'manual_entry' invoice.id %}" 
+       class="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all transform flex items-center gap-2">
+        <i class="fa-solid fa-pen"></i>
+        <span>Edit Invoice</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="{% url 'invoices_new' %}" class="inline-flex items-center text-sm text-primary hover:text-secondary font-medium transition-colors">
+            <i class="fa-solid fa-arrow-left mr-2"></i>Back to Invoices
+        </a>
+    </div>
+
+    <!-- Invoice Header Section (8.1) -->
+    <div class="glass-panel rounded-3xl p-8 mb-8 animate-slide-in">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <!-- Left: Invoice ID and Status -->
+            <div class="flex items-center gap-6">
+                <!-- Invoice Icon -->
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                    <i class="fa-solid fa-file-invoice text-2xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <h1 class="text-2xl font-bold text-gray-900">Invoice #{{ invoice.invoice_id|default:"N/A" }}</h1>
+                        <!-- Status Badge -->
+                        {% if invoice.status == 'CLEARED' or invoice.gst_verification_status == 'VERIFIED' %}
+                        <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-sm font-bold bg-success/10 text-success border border-success/20">
+                            <i class="fa-solid fa-check-circle mr-2"></i> Paid
+                        </span>
+                        {% elif invoice.status == 'HAS_ANOMALIES' or invoice.gst_verification_status == 'FAILED' %}
+                        <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-sm font-bold bg-error/10 text-error border border-error/20">
+                            <i class="fa-solid fa-exclamation-circle mr-2"></i> Has Issues
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-sm font-bold bg-warning/10 text-warning border border-warning/20">
+                            <i class="fa-solid fa-clock mr-2"></i> Pending
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-gray-500 font-medium">{{ invoice.vendor_name|default:"Unknown Vendor" }}</p>
+                </div>
+            </div>
+            
+            <!-- Right: Invoice Date and Due Date -->
+            <div class="flex gap-8">
+                <div class="text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Invoice Date</p>
+                    <p class="text-lg font-bold text-gray-900">{{ invoice.invoice_date|date:"M d, Y"|default:"N/A" }}</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Due Date</p>
+                    <p class="text-lg font-bold text-gray-900">
+                        {% if invoice.due_date %}
+                            {{ invoice.due_date|date:"M d, Y" }}
+                        {% else %}
+                            <span class="text-gray-400">Not Set</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Client and Payment Information Grid (8.2 & 8.3) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Client Information Panel (8.2) -->
+        <div class="glass-panel rounded-3xl p-6 animate-slide-in" style="animation-delay: 0.1s;">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                    <i class="fa-solid fa-building text-primary"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900">Client Information</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Company Name -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-briefcase text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Company Name</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-1">{{ invoice.vendor_name|default:"N/A" }}</p>
+                    </div>
+                </div>
+                
+                <!-- Contact Person (using vendor name as fallback) -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-user text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Contact Person</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-1">{{ invoice.vendor_name|default:"N/A" }}</p>
+                    </div>
+                </div>
+                
+                <!-- Address (using GSTIN location as proxy) -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-location-dot text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Address</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-1">
+                            {% if invoice.vendor_gstin %}
+                                GSTIN: {{ invoice.vendor_gstin }}
+                            {% else %}
+                                Not Available
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Email -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-envelope text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-1">contact@{{ invoice.vendor_name|slugify|default:"vendor" }}.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payment Information Panel (8.3) -->
+        <div class="glass-panel rounded-3xl p-6 animate-slide-in" style="animation-delay: 0.15s;">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                    <i class="fa-solid fa-credit-card text-primary"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900">Payment Information</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Payment Method -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-wallet text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Method</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-1">Bank Transfer</p>
+                    </div>
+                </div>
+                
+                <!-- Account Details -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-landmark text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Account Details</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-1">
+                            {% if invoice.billed_company_gstin %}
+                                Buyer GSTIN: {{ invoice.billed_company_gstin }}
+                            {% else %}
+                                Not Available
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- GST Verification Status -->
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-shield-halved text-primary/60 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">GST Verification</p>
+                        <div class="mt-1">
+                            {% if invoice.gst_verification_status == 'VERIFIED' %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-success/10 text-success border border-success/20">
+                                <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                            </span>
+                            {% elif invoice.gst_verification_status == 'FAILED' %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-error/10 text-error border border-error/20">
+                                <i class="fa-solid fa-times-circle mr-1"></i> Failed
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-warning/10 text-warning border border-warning/20">
+                                <i class="fa-solid fa-clock mr-1"></i> Pending
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Due -->
+                <div class="flex items-start gap-4 pt-4 border-t border-white/40">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-indian-rupee-sign text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Due</p>
+                        <p class="text-2xl font-bold text-primary mt-1">₹{{ invoice.grand_total|floatformat:2|default:"0.00" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Itemized List Table (8.4) -->
+    <div class="glass-panel rounded-3xl overflow-hidden mb-8 animate-slide-in" style="animation-delay: 0.2s;">
+        <div class="p-6 border-b border-white/40">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                    <i class="fa-solid fa-list text-primary"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Itemized List</h2>
+                    <p class="text-sm text-gray-500">{{ invoice.line_items.count }} item{{ invoice.line_items.count|pluralize }}</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if invoice.line_items.exists %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-white/20 text-xs uppercase tracking-wider text-gray-500 font-bold">
+                        <th class="px-6 py-4">#</th>
+                        <th class="px-6 py-4">Description</th>
+                        <th class="px-6 py-4">HSN/SAC</th>
+                        <th class="px-6 py-4 text-right">Quantity</th>
+                        <th class="px-6 py-4 text-right">Unit Price</th>
+                        <th class="px-6 py-4 text-right">GST %</th>
+                        <th class="px-6 py-4 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/40">
+                    {% for item in invoice.line_items.all %}
+                    <tr class="hover:bg-white/30 transition-colors">
+                        <td class="px-6 py-4 text-sm text-gray-500 font-medium">{{ forloop.counter }}</td>
+                        <td class="px-6 py-4">
+                            <p class="text-sm font-semibold text-gray-900">{{ item.description|truncatechars:50 }}</p>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary">
+                                {{ item.hsn_sac_code|default:"N/A" }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 text-right font-medium">{{ item.quantity|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 text-right font-medium">₹{{ item.unit_price|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 text-right font-medium">{{ item.billed_gst_rate|floatformat:1 }}%</td>
+                        <td class="px-6 py-4 text-sm font-bold text-gray-900 text-right">₹{{ item.line_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-12">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
+                <i class="fa-solid fa-box-open text-primary text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">No Line Items</h3>
+            <p class="text-gray-500">This invoice doesn't have any line items yet.</p>
+        </div>
+        {% endif %}
+        
+        <!-- Invoice Summary Section (8.5) -->
+        <div class="p-6 bg-white/20 border-t border-white/40">
+            <div class="flex justify-end">
+                <div class="w-full max-w-sm space-y-3">
+                    <!-- Subtotal -->
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-500">Subtotal</span>
+                        <span class="text-sm font-bold text-gray-900">
+                            {% with subtotal=0 %}
+                            {% for item in invoice.line_items.all %}
+                                {% with new_subtotal=subtotal|add:item.line_total %}
+                                {% endwith %}
+                            {% endfor %}
+                            ₹{{ invoice.grand_total|floatformat:2|default:"0.00" }}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    
+                    <!-- Tax -->
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-500">Tax (GST)</span>
+                        <span class="text-sm font-bold text-gray-900">Included</span>
+                    </div>
+                    
+                    <!-- Divider -->
+                    <div class="border-t border-white/40 pt-3">
+                        <!-- Grand Total -->
+                        <div class="flex justify-between items-center">
+                            <span class="text-lg font-bold text-gray-900">Grand Total</span>
+                            <span class="text-2xl font-bold text-primary">₹{{ invoice.grand_total|floatformat:2|default:"0.00" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Compliance Flags Section -->
+    {% if invoice.compliance_flags.exists %}
+    <div class="glass-panel rounded-3xl p-6 mb-8 animate-slide-in" style="animation-delay: 0.25s;">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-error/20 to-warning/20 flex items-center justify-center">
+                <i class="fa-solid fa-triangle-exclamation text-error"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-gray-900">Compliance Flags</h2>
+                <p class="text-sm text-gray-500">{{ invoice.compliance_flags.count }} issue{{ invoice.compliance_flags.count|pluralize }} detected</p>
+            </div>
+        </div>
+        
+        <div class="space-y-3">
+            {% for flag in invoice.compliance_flags.all %}
+            <div class="flex items-start gap-4 p-4 rounded-2xl border transition-colors
+                {% if flag.severity == 'CRITICAL' %}bg-error/5 border-error/20 hover:bg-error/10
+                {% elif flag.severity == 'WARNING' %}bg-warning/5 border-warning/20 hover:bg-warning/10
+                {% else %}bg-primary/5 border-primary/20 hover:bg-primary/10{% endif %}">
+                <div class="flex-shrink-0">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold
+                        {% if flag.severity == 'CRITICAL' %}bg-error/10 text-error
+                        {% elif flag.severity == 'WARNING' %}bg-warning/10 text-warning
+                        {% else %}bg-primary/10 text-primary{% endif %}">
+                        {{ flag.get_severity_display }}
+                    </span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-bold text-gray-900 mb-1">{{ flag.get_flag_type_display }}</p>
+                    <p class="text-sm text-gray-600">{{ flag.description }}</p>
+                    <p class="text-xs text-gray-400 mt-2">{{ flag.created_at|date:"M d, Y H:i" }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Health Score Section (if available) -->
+    {% if health_score_data %}
+    <div class="glass-panel rounded-3xl p-6 mb-8 animate-slide-in" style="animation-delay: 0.3s;">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                    <i class="fa-solid fa-heart-pulse text-primary"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Invoice Health Score</h2>
+                    <p class="text-sm text-gray-500">Comprehensive risk assessment</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-4xl font-bold 
+                    {% if health_score_data.status == 'HEALTHY' %}text-success
+                    {% elif health_score_data.status == 'REVIEW' %}text-warning
+                    {% else %}text-error{% endif %}">
+                    {{ health_score_data.overall_score }}
+                </div>
+                <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold mt-1
+                    {% if health_score_data.status == 'HEALTHY' %}bg-success/10 text-success border border-success/20
+                    {% elif health_score_data.status == 'REVIEW' %}bg-warning/10 text-warning border border-warning/20
+                    {% else %}bg-error/10 text-error border border-error/20{% endif %}">
+                    {% if health_score_data.status == 'HEALTHY' %}
+                        <i class="fa-solid fa-check-circle mr-1"></i> Healthy
+                    {% elif health_score_data.status == 'REVIEW' %}
+                        <i class="fa-solid fa-exclamation-circle mr-1"></i> Review
+                    {% else %}
+                        <i class="fa-solid fa-times-circle mr-1"></i> At Risk
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        
+        <!-- Category Breakdown -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <i class="fa-solid fa-database text-primary/60 mb-2"></i>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Data</p>
+                <p class="text-xl font-bold text-gray-900">{{ health_score_data.breakdown.data_completeness|floatformat:0 }}%</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <i class="fa-solid fa-shield-halved text-primary/60 mb-2"></i>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Verification</p>
+                <p class="text-xl font-bold text-gray-900">{{ health_score_data.breakdown.verification|floatformat:0 }}%</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <i class="fa-solid fa-scale-balanced text-primary/60 mb-2"></i>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Compliance</p>
+                <p class="text-xl font-bold text-gray-900">{{ health_score_data.breakdown.compliance|floatformat:0 }}%</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <i class="fa-solid fa-user-secret text-primary/60 mb-2"></i>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Fraud</p>
+                <p class="text-xl font-bold text-gray-900">{{ health_score_data.breakdown.fraud_detection|floatformat:0 }}%</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4 text-center">
+                <i class="fa-solid fa-robot text-primary/60 mb-2"></i>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">AI</p>
+                <p class="text-xl font-bold text-gray-900">{{ health_score_data.breakdown.ai_confidence|floatformat:0 }}%</p>
+            </div>
+        </div>
+        
+        <p class="text-xs text-gray-400 mt-4 text-right">
+            Last calculated: {{ health_score_data.calculated_at|date:"M d, Y H:i" }}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Duplicate Status Section -->
+    {% if is_duplicate and original_invoice %}
+    <div class="glass-panel rounded-3xl p-6 mb-8 border-l-4 border-warning animate-slide-in" style="animation-delay: 0.35s;">
+        <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-warning/20 flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-copy text-warning text-xl"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-lg font-bold text-gray-900 mb-2">Duplicate Invoice</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    This invoice is a duplicate of an earlier submission. It has been automatically linked to the original invoice.
+                </p>
+                <a href="{% url 'invoice_detail' original_invoice.id %}" 
+                   class="inline-flex items-center px-4 py-2 bg-warning text-white rounded-xl text-sm font-bold hover:bg-warning/90 transition-colors">
+                    <i class="fa-solid fa-external-link-alt mr-2"></i>View Original Invoice #{{ original_invoice.id }}
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if duplicate_invoices %}
+    <div class="glass-panel rounded-3xl p-6 mb-8 border-l-4 border-primary animate-slide-in" style="animation-delay: 0.35s;">
+        <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-clone text-primary text-xl"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-lg font-bold text-gray-900 mb-2">Duplicate Submissions Detected</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    This invoice has been submitted {{ duplicate_invoices|length }} additional time{{ duplicate_invoices|length|pluralize }}.
+                </p>
+                <div class="space-y-2">
+                    {% for dup in duplicate_invoices %}
+                    <div class="flex items-center justify-between p-3 bg-white/30 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-warning/20 flex items-center justify-center">
+                                <i class="fa-solid fa-copy text-warning text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">Duplicate #{{ forloop.counter }}</p>
+                                <p class="text-xs text-gray-500">{{ dup.uploaded_at|date:"M d, Y H:i" }}</p>
+                            </div>
+                        </div>
+                        <a href="{% url 'invoice_detail' dup.id %}" 
+                           class="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors">
+                            <i class="fa-solid fa-eye mr-1"></i>View
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Print invoice functionality
+    function printInvoice() {
+        window.print();
+    }
+</script>
+{% endblock %}

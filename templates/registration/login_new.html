@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Smart iInvoice</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons - Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Config with Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#850E35',    // Deep Maroon
+                        'secondary': '#EE6983',  // Soft Rose
+                        'accent': '#FFC4C4',     // Peach
+                        'bg-light': '#FFF5E4',   // Off-White
+                        'surface': '#FFFFFF',
+                        'success': '#10B981',
+                        'warning': '#F59E0B',
+                        'error': '#EF4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                        'blob': 'blob 7s infinite'
+                    },
+                    keyframes: {
+                        fadeIn: { 
+                            '0%': { opacity: '0' }, 
+                            '100%': { opacity: '1' } 
+                        },
+                        slideIn: { 
+                            '0%': { transform: 'translateY(20px)', opacity: '0' }, 
+                            '100%': { transform: 'translateY(0)', opacity: '1' } 
+                        },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFF5E4;
+        }
+
+        /* Liquid Background with Animated Blobs */
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #FFF5E4 0%, #FFC4C4 100%);
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: blob 7s infinite;
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            animation-delay: 0s;
+            background: rgba(133, 14, 53, 0.2);
+        }
+
+        .blob-2 {
+            top: 40%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            animation-delay: 2s;
+            background: rgba(238, 105, 131, 0.25);
+        }
+
+        .blob-3 {
+            bottom: -10%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            animation-delay: 4s;
+            background: rgba(255, 196, 196, 0.4);
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 40px rgba(133, 14, 53, 0.15);
+        }
+    </style>
+</head>
+
+<body class="antialiased min-h-screen flex items-center justify-center relative overflow-hidden">
+    <!-- Liquid Background with Animated Blobs -->
+    <div class="liquid-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Login Card -->
+    <div class="glass-card p-10 md:p-12 rounded-3xl w-full max-w-md animate-slide-in relative z-10 mx-4">
+        <!-- Logo -->
+        <div class="flex flex-col items-center mb-10">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30 mb-6">
+                <i class="fa-solid fa-file-invoice text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Welcome Back</h1>
+            <p class="text-gray-500 mt-2 font-medium">Sign in to manage your invoices.</p>
+        </div>
+
+        <!-- Error Messages -->
+        {% if form.non_field_errors %}
+        <div class="mb-6 p-4 rounded-xl border border-error/30 bg-error/5">
+            <div class="flex items-center">
+                <i class="fa-solid fa-exclamation-circle text-error mr-3"></i>
+                <p class="text-error text-sm font-medium">{{ form.non_field_errors.0 }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Login Form -->
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Username/Email Field -->
+            <div>
+                <label for="id_username" class="block text-sm font-bold text-gray-700 mb-2 ml-1">Username</label>
+                <div class="relative group">
+                    <i class="fa-regular fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="text" 
+                           id="id_username" 
+                           name="username" 
+                           placeholder="Enter your username"
+                           value="{{ form.username.value|default:'' }}"
+                           class="pl-12 pr-4 py-3.5 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800"
+                           required
+                           autofocus>
+                </div>
+                {% if form.username.errors %}
+                <p class="mt-2 text-sm text-error ml-1">{{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Password Field -->
+            <div>
+                <div class="flex justify-between items-center mb-2 ml-1">
+                    <label for="id_password" class="block text-sm font-bold text-gray-700">Password</label>
+                    <a href="#" class="text-xs font-bold text-primary hover:text-secondary transition-colors">Forgot password?</a>
+                </div>
+                <div class="relative group">
+                    <i class="fa-solid fa-lock absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="password" 
+                           id="id_password" 
+                           name="password" 
+                           placeholder="••••••••"
+                           class="pl-12 pr-4 py-3.5 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800"
+                           required>
+                </div>
+                {% if form.password.errors %}
+                <p class="mt-2 text-sm text-error ml-1">{{ form.password.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit"
+                    class="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-bold text-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] transition-all transform active:scale-95">
+                Sign In
+            </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="relative my-10">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300/50"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-4 bg-white/40 backdrop-blur-sm rounded-full text-gray-500 font-medium">New to Smart iInvoice?</span>
+            </div>
+        </div>
+
+        <!-- Sign Up Link -->
+        <p class="text-center text-sm text-gray-500 font-medium">
+            Don't have an account?
+            <a href="{% url 'register' %}" class="font-bold text-primary hover:text-secondary transition-colors">Sign up</a>
+        </p>
+    </div>
+</body>
+</html>

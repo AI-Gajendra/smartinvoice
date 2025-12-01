@@ -1,0 +1,36 @@
+# ============================================================================
+# Smart iInvoice - Development Dockerfile
+# ============================================================================
+# Optimized for development with hot-reload support
+# ============================================================================
+
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq-dev \
+    gcc \
+    libc-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY requirements.txt .
+COPY "gst verification template/requirements.txt" ./gst_requirements.txt
+
+RUN pip install -r requirements.txt && \
+    pip install -r gst_requirements.txt
+
+# Expose port
+EXPOSE 8000
+
+# Default command
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

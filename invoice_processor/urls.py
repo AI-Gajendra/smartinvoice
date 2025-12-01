@@ -2,14 +2,19 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.dashboard, name='dashboard'),
+    path('', views.dashboard_new, name='dashboard'),
+    path('dashboard-old/', views.dashboard, name='dashboard_old'),
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
     path('upload/', views.upload_invoice, name='upload_invoice'),
     path('gst-verification/', views.gst_verification, name='gst_verification'),
+    path('invoices/', views.invoices_new, name='invoices_new'),
+    path('clients/', views.clients_new, name='clients_new'),
+    path('products/', views.products_new, name='products_new'),
     path('gst-cache/', views.gst_cache_management, name='gst_cache'),
     path('invoice/<int:invoice_id>/', views.invoice_detail, name='invoice_detail'),
     path('invoice/<int:invoice_id>/manual-entry/', views.manual_entry, name='manual_entry'),
+    path('invoice/create/', views.invoice_create, name='invoice_create'),
     path('invoice/<int:invoice_id>/submit-manual-entry/', views.submit_manual_entry, name='submit_manual_entry'),
     path('profile/', views.user_profile, name='user_profile'),
     path('settings/', views.settings, name='settings'),
@@ -26,4 +31,5 @@ urlpatterns = [
     path('export/my-data/', views.export_my_data, name='export_my_data'),
     path('delete-account/', views.delete_account, name='delete_account'),
     path('coming-soon/', views.coming_soon, name='coming_soon'),
+    path('api/product/update/', views.update_product, name='update_product'),
 ]

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart iInvoice{% endblock %}</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons - Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config with Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#850E35',    // Deep Maroon
+                        'secondary': '#EE6983',  // Soft Rose
+                        'accent': '#FFC4C4',     // Peach
+                        'bg-light': '#FFF5E4',   // Off-White
+                        'surface': '#FFFFFF',
+                        'success': '#10B981',
+                        'warning': '#F59E0B',
+                        'error': '#EF4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                        'pulse-slow': 'pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'blob': 'blob 7s infinite'
+                    },
+                    keyframes: {
+                        fadeIn: { 
+                            '0%': { opacity: '0' }, 
+                            '100%': { opacity: '1' } 
+                        },
+                        slideIn: { 
+                            '0%': { transform: 'translateY(20px)', opacity: '0' }, 
+                            '100%': { transform: 'translateY(0)', opacity: '1' } 
+                        },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFF5E4;
+            overflow-x: hidden;
+        }
+
+        /* Liquid Background with Animated Blobs */
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #FFF5E4 0%, #FFC4C4 100%);
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: blob 7s infinite;
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            animation-delay: 0s;
+            background: rgba(133, 14, 53, 0.2);
+        }
+
+        .blob-2 {
+            top: 40%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            animation-delay: 2s;
+            background: rgba(238, 105, 131, 0.25);
+        }
+
+        .blob-3 {
+            bottom: -10%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            animation-delay: 4s;
+            background: rgba(255, 196, 196, 0.4);
+        }
+
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        /* Glassmorphism Panel */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(133, 14, 53, 0.1);
+        }
+
+        /* Glassmorphism Sidebar */
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        /* Sidebar Link Styles */
+        .sidebar-link {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255, 255, 255, 0.5);
+            color: #850E35;
+        }
+
+        /* Active Navigation Link - Left border accent and gradient background */
+        .sidebar-link.active {
+            background: linear-gradient(90deg, rgba(133, 14, 53, 0.1) 0%, rgba(238, 105, 131, 0.1) 100%);
+            color: #850E35;
+            border-left: 3px solid #850E35;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(133, 14, 53, 0.2);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(133, 14, 53, 0.4);
+        }
+
+        /* Mobile sidebar overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 25;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Mobile sidebar - hidden by default on mobile */
+        @media (max-width: 767px) {
+            #sidebar {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                height: 100%;
+                width: 18rem; /* w-72 = 288px */
+                z-index: 30;
+                transition: left 0.3s ease;
+            }
+            
+            #sidebar.show {
+                left: 0;
+            }
+
+            /* Ensure touch targets are at least 44x44 pixels on mobile */
+            .sidebar-link {
+                min-height: 44px;
+            }
+
+            /* Mobile header adjustments */
+            header {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
+        }
+
+        /* Tablet adjustments */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            header {
+                padding-left: 1.5rem !important;
+                padding-right: 1.5rem !important;
+            }
+        }
+
+        /* Ensure minimum touch target sizes for all interactive elements */
+        .touch-target {
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        /* Mobile touch target enhancements */
+        @media (max-width: 767px) {
+            /* Ensure all buttons and links have minimum touch target size */
+            button, 
+            a.sidebar-link,
+            .glass-panel button,
+            input[type="checkbox"],
+            input[type="radio"],
+            select {
+                min-height: 44px;
+            }
+
+            /* Sidebar links touch targets */
+            .sidebar-link {
+                min-height: 48px;
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
+            }
+
+            /* Notification bell and action buttons */
+            header button,
+            header a {
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            /* Table action buttons */
+            table button,
+            table a {
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            /* Form inputs */
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="number"],
+            input[type="date"],
+            textarea,
+            select {
+                min-height: 44px;
+                font-size: 16px; /* Prevents iOS zoom on focus */
+            }
+
+            /* Pagination buttons */
+            .pagination button,
+            .pagination a {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
+
+        /* Tablet touch target adjustments */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            button,
+            a.sidebar-link {
+                min-height: 40px;
+            }
+        }
+    </style>
+</head>
+
+<body class="text-gray-800 antialiased">
+    {% if user.is_authenticated %}
+    <!-- Liquid Background with Animated Blobs -->
+    <div class="liquid-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <div class="flex h-screen overflow-hidden relative">
+        <!-- Glassmorphism Sidebar -->
+        <aside class="w-72 glass-sidebar z-30 md:flex flex-col transition-all duration-300" id="sidebar">
+            <!-- Logo Area -->
+            <div class="h-24 flex items-center justify-center border-b border-white/30">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                        <i class="fa-solid fa-file-invoice text-xl"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-primary tracking-tight">
+                        Smart<span class="font-light">Invoice</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 overflow-y-auto py-8 px-4 space-y-2">
+                <p class="px-4 text-xs font-bold text-primary/60 uppercase tracking-widest mb-4">Main Menu</p>
+
+                <!-- Dashboard Link -->
+                <a href="{% url 'dashboard' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- Invoices Link -->
+                <a href="{% url 'invoices_new' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'invoices_new' or request.resolver_match.url_name == 'gst_verification' or request.resolver_match.url_name == 'invoice_detail' %}active{% endif %}">
+                    <i class="fa-solid fa-file-lines w-5"></i>
+                    <span>Invoices</span>
+                </a>
+
+                <!-- Clients Link -->
+                <a href="{% url 'clients_new' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'clients_new' %}active{% endif %}">
+                    <i class="fa-solid fa-users w-5"></i>
+                    <span>Clients</span>
+                </a>
+
+                <!-- Products Link -->
+                <a href="{% url 'products_new' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'products_new' %}active{% endif %}">
+                    <i class="fa-solid fa-box w-5"></i>
+                    <span>Products</span>
+                </a>
+
+                <p class="px-4 text-xs font-bold text-primary/60 uppercase tracking-widest mt-8 mb-4">System</p>
+
+                <!-- Settings Link -->
+                <a href="{% url 'settings' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                    <i class="fa-solid fa-gear w-5"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Section in Sidebar Footer -->
+            <div class="p-6 border-t border-white/30">
+                <div class="glass-panel p-3 rounded-2xl">
+                    <div class="flex items-center gap-3">
+                        <!-- User Avatar -->
+                        <a href="{% url 'user_profile' %}" class="flex-shrink-0">
+                            {% if user.profile.profile_picture %}
+                                <img src="{{ user.profile.profile_picture.url }}" alt="Profile" 
+                                     class="w-10 h-10 rounded-xl shadow-sm object-cover">
+                            {% else %}
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-sm">
+                                    <span class="text-sm font-bold">{{ user.first_name.0|default:user.username.0|upper }}</span>
+                                </div>
+                            {% endif %}
+                        </a>
+                        <!-- User Name and Email -->
+                        <div class="flex-1 min-w-0">
+                            <a href="{% url 'user_profile' %}" class="block hover:text-primary transition-colors">
+                                <p class="text-sm font-bold text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
+                                <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
+                            </a>
+                        </div>
+                        <!-- Logout Button - min 44x44px touch target -->
+                        <form method="post" action="{% url 'logout' %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" 
+                                    class="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-error hover:bg-error/10 rounded-xl transition-all duration-200 touch-target" 
+                                    title="Logout" aria-label="Logout">
+                                <i class="fa-solid fa-sign-out-alt"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+            <!-- Top Header Bar -->
+            <header class="h-24 z-20 flex items-center justify-between px-8 lg:px-12">
+                <!-- Left: Mobile Toggle & Search -->
+                <div class="flex items-center gap-6">
+                    <!-- Mobile Menu Toggle Button (hamburger menu) - min 44x44px touch target -->
+                    <button class="md:hidden w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-primary hover:bg-white/20 rounded-xl transition-colors touch-target" 
+                            onclick="toggleSidebar()" id="mobile-menu-btn" aria-label="Toggle navigation menu">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+
+                    <!-- Search Input with Glass Panel Styling -->
+                    <div class="relative hidden sm:block group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-primary/40 group-focus-within:text-primary transition-colors"></i>
+                        </div>
+                        <input type="text" placeholder="Search anything..."
+                               class="pl-11 pr-4 py-3 w-80 glass-panel rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/60 transition-all placeholder-primary/30 text-gray-700">
+                    </div>
+                </div>
+
+                <!-- Right: Notification Bell and Actions -->
+                <div class="flex items-center gap-6">
+                    <!-- Notification Bell with Badge - min 44x44px touch target -->
+                    <button class="w-12 h-12 min-w-[44px] min-h-[44px] rounded-2xl glass-panel text-primary/60 hover:text-primary hover:bg-white/60 transition-all flex items-center justify-center relative group touch-target" aria-label="Notifications">
+                        <i class="fa-regular fa-bell text-xl"></i>
+                        <span class="absolute top-3 right-3 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-white"></span>
+                    </button>
+
+                    <!-- Header Actions Block - Page-specific buttons -->
+                    {% block header_actions %}
+                    <button class="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all transform flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>New Action</span>
+                    </button>
+                    {% endblock %}
+                </div>
+            </header>
+
+            <!-- Main Scrollable Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto px-8 lg:px-12 pb-8 scroll-smooth">
+                <!-- Flash Messages -->
+                {% if messages %}
+                <div class="mb-6 space-y-3">
+                    {% for message in messages %}
+                    <div class="animate-slide-in glass-panel p-4 rounded-xl {% if message.tags == 'error' %}border-l-4 border-error bg-error/5{% elif message.tags == 'success' %}border-l-4 border-success bg-success/5{% elif message.tags == 'warning' %}border-l-4 border-warning bg-warning/5{% else %}border-l-4 border-primary bg-primary/5{% endif %}">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                {% if message.tags == 'error' %}
+                                    <i class="fa-solid fa-exclamation-circle text-error"></i>
+                                {% elif message.tags == 'success' %}
+                                    <i class="fa-solid fa-check-circle text-success"></i>
+                                {% elif message.tags == 'warning' %}
+                                    <i class="fa-solid fa-exclamation-triangle text-warning"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-info-circle text-primary"></i>
+                                {% endif %}
+                            </div>
+                            <div class="ml-3 text-sm font-medium text-gray-700">
+                                {{ message }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% block content %}
+                <!-- Page content goes here -->
+                {% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Toggle Script -->
+    <script>
+        /**
+         * Toggle sidebar visibility on mobile devices
+         * Shows/hides the sidebar and overlay
+         */
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isOpen = sidebar.classList.contains('show');
+            
+            if (isOpen) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        }
+
+        /**
+         * Open the mobile sidebar
+         */
+        function openSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            sidebar.classList.add('show');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        /**
+         * Close the mobile sidebar
+         */
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            sidebar.classList.remove('show');
+            overlay.classList.remove('active');
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+
+        // Close sidebar when clicking the overlay
+        document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
+
+        // Close sidebar when pressing Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && window.innerWidth < 768) {
+                closeSidebar();
+            }
+        });
+
+        // Close sidebar on window resize to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) {
+                closeSidebar();
+            }
+        });
+
+        // Close sidebar when clicking a navigation link on mobile
+        document.querySelectorAll('.sidebar-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 768) {
+                    closeSidebar();
+                }
+            });
+        });
+    </script>
+
+    {% else %}
+    <!-- Non-authenticated Layout (Login page, etc.) -->
+    <!-- Liquid Background for non-authenticated pages -->
+    <div class="liquid-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+    
+    <div class="min-h-screen flex items-center justify-center relative z-10">
+        {% block auth_content %}
+        {% endblock %}
+    </div>
+    {% endif %}
+
+    {% block scripts %}
+    <!-- Page-specific scripts -->
+    {% endblock %}
+</body>
+</html>

@@ -221,6 +221,7 @@ class UserProfile(models.Model):
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     company_name = models.CharField(max_length=255, null=True, blank=True)
+    bio = models.TextField(null=True, blank=True)  # User bio/description
     
     # Social connections
     facebook_connected = models.BooleanField(default=False)

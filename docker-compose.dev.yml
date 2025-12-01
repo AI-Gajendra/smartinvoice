@@ -1,0 +1,96 @@
+# ============================================================================
+# Smart iInvoice - Docker Compose Development Configuration
+# ============================================================================
+# Use this for local development with hot-reload
+# Run with: docker-compose -f docker-compose.dev.yml up
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Redis - Message broker for Celery
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: smartinvoice-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - smartinvoice-dev-network
+
+  # ==========================================================================
+  # GST Verification Service (Mock for development)
+  # ==========================================================================
+  gst-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.gst.dev
+    container_name: smartinvoice-gst-dev
+    ports:
+      - "5001:5001"
+    volumes:
+      - "./gst verification template:/app"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    networks:
+      - smartinvoice-dev-network
+
+  # ==========================================================================
+  # Django Web Application (Development with hot-reload)
+  # ==========================================================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: smartinvoice-web-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GST_SERVICE_URL=http://gst-service:5001
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - .:/app
+      - /app/venv
+      - /app/__pycache__
+    depends_on:
+      - redis
+      - gst-service
+    networks:
+      - smartinvoice-dev-network
+    command: python manage.py runserver 0.0.0.0:8000
+
+  # ==========================================================================
+  # Celery Worker (Development)
+  # ==========================================================================
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: smartinvoice-celery-dev
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GST_SERVICE_URL=http://gst-service:5001
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - .:/app
+      - /app/venv
+    depends_on:
+      - redis
+      - web
+    networks:
+      - smartinvoice-dev-network
+    command: celery -A smartinvoice worker --loglevel=debug
+
+networks:
+  smartinvoice-dev-network:
+    driver: bridge

@@ -1,0 +1,74 @@
+# ============================================================================
+# Smart iInvoice - Dockerfile
+# ============================================================================
+# Multi-stage build for optimized production image
+# ============================================================================
+
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq-dev \
+    gcc \
+    libc-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# Builder stage - Install Python dependencies
+# ============================================================================
+FROM base as builder
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+COPY "gst verification template/requirements.txt" ./gst_requirements.txt
+
+# Install Python dependencies
+RUN pip install --user -r requirements.txt && \
+    pip install --user -r gst_requirements.txt && \
+    pip install --user gunicorn
+
+# ============================================================================
+# Production stage
+# ============================================================================
+FROM base as production
+
+# Create non-root user for security
+RUN groupadd -r smartinvoice && useradd -r -g smartinvoice smartinvoice
+
+# Copy installed packages from builder
+COPY --from=builder /root/.local /home/smartinvoice/.local
+ENV PATH=/home/smartinvoice/.local/bin:$PATH
+
+# Copy application code
+COPY --chown=smartinvoice:smartinvoice . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/media /app/staticfiles /app/data && \
+    chown -R smartinvoice:smartinvoice /app
+
+# Switch to non-root user
+USER smartinvoice
+
+# Collect static files
+RUN python manage.py collectstatic --noinput --clear 2>/dev/null || true
+
+# Expose ports
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Default command - run with gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "smartinvoice.wsgi:application"]

@@ -1,0 +1,78 @@
+# ============================================================================
+# Smart iInvoice - Docker Ignore File
+# ============================================================================
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Kiro specs (not needed in production)
+.kiro/
+
+# Logs (will be mounted as volume)
+logs/
+*.log
+
+# Local database (will be mounted as volume)
+db.sqlite3
+
+# Media files (will be mounted as volume)
+media/
+
+# Static files (collected during build)
+staticfiles/
+
+# Environment files (use docker-compose environment)
+.env
+.env.local
+.env.*.local
+
+# Test files
+.hypothesis/
+*.test.py
+tests/
+test_*.py
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Node modules (if any)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*

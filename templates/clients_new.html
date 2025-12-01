@@ -1,0 +1,173 @@
+{% extends 'base_new.html' %}
+
+{% block title %}Clients - Smart iInvoice{% endblock %}
+
+{% block header_actions %}
+<button onclick="showAddClientModal()" 
+   class="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all transform flex items-center gap-2">
+    <i class="fa-solid fa-plus"></i>
+    <span>Add Client</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Clients</h1>
+            <p class="text-gray-500 mt-2 font-medium">View and manage your client base.</p>
+        </div>
+        <div class="flex gap-3">
+            <button class="px-5 py-2.5 glass-panel text-gray-600 rounded-xl text-sm font-bold hover:bg-white/60 transition-colors shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-filter text-primary"></i> Filter
+            </button>
+        </div>
+    </div>
+
+    <!-- Clients Grid - Responsive: 1 col mobile, 2 col medium, 3 col large -->
+    {% if clients %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 animate-slide-in">
+        {% for client in clients %}
+        <!-- Client Card -->
+        <div class="glass-panel p-8 rounded-3xl hover:scale-[1.02] transition-transform duration-300 group cursor-pointer relative overflow-hidden">
+            <!-- Decorative corner -->
+            <div class="absolute top-0 right-0 w-24 h-24 {% cycle 'bg-primary/5' 'bg-secondary/5' 'bg-warning/5' %} rounded-bl-full -mr-4 -mt-4 transition-all group-hover:{% cycle 'bg-primary/10' 'bg-secondary/10' 'bg-warning/10' %}"></div>
+
+            <!-- Client Header: Avatar, Name, Company -->
+            <div class="flex items-start justify-between mb-6 relative z-10">
+                <div class="flex items-center gap-5">
+                    <!-- Avatar with Initials -->
+                    {% with client_initials=client.vendor_name|slice:":2"|upper|default:"??" %}
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-bold shadow-md group-hover:shadow-lg transition-all">
+                        {{ client_initials }}
+                    </div>
+                    {% endwith %}
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
+                            {{ client.vendor_name|truncatechars:20 }}
+                        </h3>
+                        <p class="text-sm text-gray-500 font-medium">
+                            {% if client.gstin %}GSTIN: {{ client.gstin|slice:":10" }}...{% else %}No GSTIN{% endif %}
+                        </p>
+                    </div>
+                </div>
+                <button class="text-gray-400 hover:text-primary transition-colors">
+                    <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Client Details: Email, Phone, Location -->
+            <div class="space-y-3 mb-8 relative z-10">
+                <!-- Email -->
+                <div class="flex items-center gap-4 text-sm text-gray-600">
+                    <div class="w-8 h-8 rounded-lg bg-white/40 flex items-center justify-center text-primary">
+                        <i class="fa-regular fa-envelope"></i>
+                    </div>
+                    <span class="font-medium">
+                        {% if client.email %}{{ client.email }}{% else %}No email available{% endif %}
+                    </span>
+                </div>
+                <!-- Phone -->
+                <div class="flex items-center gap-4 text-sm text-gray-600">
+                    <div class="w-8 h-8 rounded-lg bg-white/40 flex items-center justify-center text-primary">
+                        <i class="fa-solid fa-phone"></i>
+                    </div>
+                    <span class="font-medium">
+                        {% if client.phone %}{{ client.phone }}{% else %}No phone available{% endif %}
+                    </span>
+                </div>
+                <!-- Location / Invoice Count -->
+                <div class="flex items-center gap-4 text-sm text-gray-600">
+                    <div class="w-8 h-8 rounded-lg bg-white/40 flex items-center justify-center text-primary">
+                        <i class="fa-solid fa-file-invoice"></i>
+                    </div>
+                    <span class="font-medium">{{ client.invoice_count }} invoice{{ client.invoice_count|pluralize }}</span>
+                </div>
+            </div>
+
+            <!-- Footer: Status Badge and View Profile Button -->
+            <div class="flex items-center justify-between pt-6 border-t border-white/40 relative z-10">
+                <!-- Status Badge (Active/Inactive based on recent activity) -->
+                {% if client.is_active %}
+                <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-success/10 text-success border border-success/20">
+                    Active
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-warning/10 text-warning border border-warning/20">
+                    Inactive
+                </span>
+                {% endif %}
+                
+                <!-- View Profile Button -->
+                <a href="{% url 'invoices_new' %}?vendor={{ client.vendor_name|urlencode }}" 
+                   class="text-sm font-bold text-primary hover:text-secondary transition-colors flex items-center gap-2">
+                    View Profile <i class="fa-solid fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="glass-panel rounded-3xl p-16 text-center animate-slide-in">
+        <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
+            <i class="fa-solid fa-users text-primary text-3xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">No clients found</h3>
+        <p class="text-gray-500 mb-6">Upload invoices to automatically add clients to your list.</p>
+        <a href="{% url 'gst_verification' %}" 
+           class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all">
+            <i class="fa-solid fa-plus mr-2"></i> Upload Invoice
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Client Modal (placeholder for future functionality) -->
+<div id="add-client-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="hideAddClientModal()"></div>
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+        <div class="glass-panel rounded-3xl p-8 m-4">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-gray-900">Add New Client</h3>
+                <button onclick="hideAddClientModal()" class="text-gray-400 hover:text-primary transition-colors">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            <p class="text-gray-500 mb-6">
+                Clients are automatically added when you upload invoices. To add a new client, upload an invoice from that vendor.
+            </p>
+            <div class="flex gap-3">
+                <button onclick="hideAddClientModal()" 
+                        class="flex-1 px-6 py-3 glass-panel text-gray-600 rounded-xl font-semibold hover:bg-white/60 transition-colors">
+                    Cancel
+                </button>
+                <a href="{% url 'gst_verification' %}" 
+                   class="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-semibold text-center hover:shadow-lg transition-all">
+                    Upload Invoice
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function showAddClientModal() {
+        document.getElementById('add-client-modal').classList.remove('hidden');
+    }
+    
+    function hideAddClientModal() {
+        document.getElementById('add-client-modal').classList.add('hidden');
+    }
+    
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideAddClientModal();
+        }
+    });
+</script>
+{% endblock %}

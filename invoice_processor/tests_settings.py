@@ -62,7 +62,7 @@ class SettingsPageIntegrationTests(TestCase):
         response = self.client.get(self.settings_url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'settings.html')
+        self.assertTemplateUsed(response, 'settings_new.html')
     
     def test_settings_page_displays_user_profile_data(self):
         """Test that settings page displays current user and profile data"""
