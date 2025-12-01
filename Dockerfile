@@ -8,7 +8,8 @@ FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ALLOWED_HOSTS="localhost,127.0.0.1,smartinvoice-p2hv.onrender.com,.onrender.com"
 
 # Set work directory
 WORKDIR /app
