@@ -17,11 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy GST service requirements and install
-COPY gst_verification_template/requirements.txt .
+COPY "gst verification template/requirements.txt" .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy GST service code
-COPY gst_verification_template/ .
+COPY "gst verification template/" .
 
 # Create non-root user
 RUN groupadd -r gstservice && useradd -r -g gstservice gstservice
@@ -30,9 +30,9 @@ USER gstservice
 # Expose port
 EXPOSE 5001
 
-# Health check
+# Health check - use PORT env var that Render sets
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5001/ || exit 1
+    CMD curl -f http://localhost:${PORT:-5001}/ || exit 1
 
 # Run the GST service
 CMD ["python", "app.py"]

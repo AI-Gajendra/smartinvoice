@@ -2,6 +2,7 @@ from flask import Flask, jsonify, Response, make_response, request
 import requests
 import uuid
 import base64
+import os
 
 from asgiref.wsgi import WsgiToAsgi
 
@@ -9,6 +10,12 @@ app = Flask(__name__)
 asgi_app = WsgiToAsgi(app)
 
 gstSessions = {}
+
+
+@app.route("/", methods=["GET"])
+def health_check():
+    """Health check endpoint for Render"""
+    return jsonify({"status": "healthy", "service": "gst-verification"})
 
 @app.route("/api/v1/getCaptcha", methods=["GET"])
 def getCaptcha():
@@ -57,8 +64,11 @@ def getGSTDetails():
         captcha = request.json.get("captcha")
 
         user = gstSessions.get(sessionId)
+        
+        if user is None:
+            return jsonify({"error": "Invalid or expired session id. Please request a new CAPTCHA."})
 
-        session = user['session']
+        session = user.get('session')
         if session is None:
             return jsonify({"error": "Invalid session id"})
 
@@ -81,4 +91,5 @@ def getGSTDetails():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(asgi_app, host='0.0.0.0', port=5001)
+    port = int(os.environ.get("PORT", 5001))
+    uvicorn.run(asgi_app, host='0.0.0.0', port=port)

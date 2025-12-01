@@ -147,7 +147,7 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # API Configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-GST_SERVICE_URL = os.environ.get('GST_SERVICE_URL', 'http://127.0.0.1:5001')
+GST_SERVICE_URL = os.environ.get('GST_SERVICE_URL', 'https://smartinvoice-gst.onrender.com')
 
 # Logging Configuration
 LOGGING = {

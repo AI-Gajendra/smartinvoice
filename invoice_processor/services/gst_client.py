@@ -11,7 +11,7 @@ class GSTClient:
     
     def __init__(self):
         """Initialize GST client with microservice URL from environment"""
-        self.service_url = config('GST_SERVICE_URL', default='http://127.0.0.1:5001')
+        self.service_url = config('GST_SERVICE_URL', default='https://smartinvoice-gst.onrender.com')
         self.timeout_seconds = 30
         self.max_retries = 1
         
@@ -19,7 +19,7 @@ class GSTClient:
         if self.service_url:
             self.service_url = self.service_url.rstrip('/')
         else:
-            self.service_url = 'http://127.0.0.1:5001'
+            self.service_url = 'https://smartinvoice-gst.onrender.com'
         
         logger.info(f"GST Client initialized with service URL: {self.service_url}")
     
