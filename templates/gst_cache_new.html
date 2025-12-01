@@ -1,0 +1,447 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}GST Cache - Smart iInvoice{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'export_gst_cache' %}" 
+   class="px-6 py-3 bg-gradient-to-r from-success to-green-400 text-white rounded-2xl font-semibold shadow-lg shadow-success/20 hover:shadow-success/40 hover:scale-105 transition-all transform flex items-center gap-2">
+    <i class="fa-solid fa-download"></i>
+    <span>Export CSV</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-fade-in">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">GST Verified Cache</h1>
+        <p class="text-gray-500 mt-2 font-medium">Manage verified GST numbers and business details</p>
+    </div>
+    <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium text-gray-600">
+        <i class="fa-solid fa-database text-primary"></i>
+        <span>Total: {{ total_count }} entr{{ total_count|pluralize:"y,ies" }}</span>
+    </div>
+</div>
+
+<!-- Search and Filter Controls -->
+<div class="glass-panel p-6 rounded-3xl mb-8 animate-slide-in">
+    <!-- Search Bar -->
+    <form method="GET" action="{% url 'gst_cache' %}" class="mb-6">
+        <div class="flex gap-3">
+            <div class="flex-1 relative group">
+                <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                <input type="text" name="search" value="{{ search_query }}" 
+                       placeholder="Search by GSTIN, legal name, or trade name..." 
+                       class="w-full pl-12 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800">
+            </div>
+            <button type="submit" 
+                    class="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold hover:shadow-lg transition-all flex items-center gap-2">
+                <i class="fa-solid fa-search"></i>
+                <span class="hidden sm:inline">Search</span>
+            </button>
+            {% if search_query or status_filter %}
+            <a href="{% url 'gst_cache' %}" 
+               class="px-6 py-3 bg-white/50 text-gray-700 rounded-2xl font-semibold hover:bg-white/80 transition-all flex items-center gap-2">
+                <i class="fa-solid fa-times"></i>
+                <span class="hidden sm:inline">Clear</span>
+            </a>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- Status Filter -->
+    <div class="mb-6">
+        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 block">Filter by Status</label>
+        <div class="flex flex-wrap gap-2">
+            <a href="?search={{ search_query }}&status=&sort={{ sort_by }}" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if not status_filter %}bg-gradient-to-r from-primary to-secondary text-white shadow-md{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-list mr-2"></i>All
+            </a>
+            <a href="?search={{ search_query }}&status=Active&sort={{ sort_by }}" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if status_filter == 'Active' %}bg-gradient-to-r from-success to-green-400 text-white shadow-md{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-check-circle mr-2"></i>Active
+            </a>
+            <a href="?search={{ search_query }}&status=Inactive&sort={{ sort_by }}" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if status_filter == 'Inactive' %}bg-gradient-to-r from-error to-red-400 text-white shadow-md{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-times-circle mr-2"></i>Inactive
+            </a>
+        </div>
+    </div>
+
+    <!-- Sort Options -->
+    <div>
+        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 block">Sort By</label>
+        <div class="flex flex-wrap gap-2">
+            <a href="?search={{ search_query }}&status={{ status_filter }}&sort=recent" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if sort_by == 'recent' %}bg-gray-800 text-white{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-clock mr-2"></i>Recently Verified
+            </a>
+            <a href="?search={{ search_query }}&status={{ status_filter }}&sort=oldest" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if sort_by == 'oldest' %}bg-gray-800 text-white{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-history mr-2"></i>Oldest First
+            </a>
+            <a href="?search={{ search_query }}&status={{ status_filter }}&sort=gstin" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if sort_by == 'gstin' %}bg-gray-800 text-white{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-sort-alpha-down mr-2"></i>GSTIN
+            </a>
+            <a href="?search={{ search_query }}&status={{ status_filter }}&sort=name" 
+               class="px-4 py-2 rounded-xl text-sm font-semibold transition-all {% if sort_by == 'name' %}bg-gray-800 text-white{% else %}bg-white/50 text-gray-600 hover:bg-white/80{% endif %}">
+                <i class="fa-solid fa-building mr-2"></i>Company Name
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Cache Table -->
+<div class="glass-panel rounded-3xl overflow-hidden animate-slide-in" style="animation-delay: 0.1s;">
+    {% if page_obj.object_list %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-white/20 text-xs uppercase tracking-wider text-gray-500 font-bold">
+                    <th class="px-6 py-5">GSTIN</th>
+                    <th class="px-6 py-5">Legal Name</th>
+                    <th class="px-6 py-5 hidden md:table-cell">Trade Name</th>
+                    <th class="px-6 py-5 hidden lg:table-cell">Status</th>
+                    <th class="px-6 py-5 hidden xl:table-cell">Registration</th>
+                    <th class="px-6 py-5 hidden xl:table-cell">Last Verified</th>
+                    <th class="px-6 py-5">Uses</th>
+                    <th class="px-6 py-5">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/40">
+                {% for entry in page_obj.object_list %}
+                <tr class="hover:bg-white/30 transition-colors">
+                    <td class="px-6 py-5">
+                        <span class="text-sm font-mono font-bold text-gray-900 bg-white/50 px-3 py-1 rounded-lg">
+                            {{ entry.gstin }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="text-sm font-semibold text-gray-900">{{ entry.legal_name|truncatechars:35 }}</div>
+                        <div class="text-xs text-gray-500 md:hidden mt-1">
+                            {% if entry.trade_name %}{{ entry.trade_name|truncatechars:25 }}{% else %}N/A{% endif %}
+                        </div>
+                    </td>
+                    <td class="px-6 py-5 hidden md:table-cell">
+                        <span class="text-sm text-gray-700">{{ entry.trade_name|default:"N/A"|truncatechars:25 }}</span>
+                    </td>
+                    <td class="px-6 py-5 hidden lg:table-cell">
+                        <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border
+                            {% if entry.status == 'Active' %}bg-success/10 text-success border-success/20
+                            {% else %}bg-error/10 text-error border-error/20{% endif %}">
+                            {% if entry.status == 'Active' %}<i class="fa-solid fa-check-circle mr-1"></i>
+                            {% else %}<i class="fa-solid fa-times-circle mr-1"></i>{% endif %}
+                            {{ entry.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5 hidden xl:table-cell">
+                        <span class="text-sm text-gray-500 font-medium">{{ entry.registration_date|date:"M d, Y"|default:"N/A" }}</span>
+                    </td>
+                    <td class="px-6 py-5 hidden xl:table-cell">
+                        <span class="text-sm text-gray-500 font-medium">{{ entry.last_verified|date:"M d, Y H:i" }}</span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <span class="inline-flex items-center px-3 py-1 bg-primary/10 text-primary rounded-lg text-sm font-bold">
+                            {{ entry.verification_count }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <button onclick="startRefresh('{{ entry.gstin }}')" 
+                                class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-xl text-sm font-semibold hover:shadow-lg transition-all">
+                            <i class="fa-solid fa-sync-alt mr-1"></i>Refresh
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="p-6 border-t border-white/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <p class="text-sm text-gray-500">
+            Showing <span class="font-bold text-gray-700">{{ page_obj.start_index }}</span> to 
+            <span class="font-bold text-gray-700">{{ page_obj.end_index }}</span> of 
+            <span class="font-bold text-gray-700">{{ page_obj.paginator.count }}</span> results
+        </p>
+        <nav class="flex items-center gap-2">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&sort={{ sort_by }}" 
+               class="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-gray-600 hover:bg-white/80 transition-colors">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a href="?page={{ num }}&search={{ search_query }}&status={{ status_filter }}&sort={{ sort_by }}" 
+                   class="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-gray-600 hover:bg-white/80 transition-colors font-medium">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&sort={{ sort_by }}" 
+               class="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-gray-600 hover:bg-white/80 transition-colors">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-16">
+        <div class="w-20 h-20 mx-auto rounded-3xl bg-gray-100 flex items-center justify-center text-gray-400 mb-6">
+            <i class="fa-solid fa-database text-3xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">No cache entries found</h3>
+        <p class="text-gray-500 mb-6">
+            {% if search_query or status_filter %}
+            No entries match your search criteria. <a href="{% url 'gst_cache' %}" class="text-primary hover:underline font-medium">View all entries</a>
+            {% else %}
+            Verify some GST numbers to populate the cache.
+            {% endif %}
+        </p>
+        <a href="{% url 'gst_verification' %}" class="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved"></i>
+            Go to GST Verification
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+
+<!-- Refresh CAPTCHA Modal -->
+<div id="refreshModal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl animate-slide-in p-6 shadow-2xl">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Refresh GST Cache</h3>
+                <p class="text-sm text-gray-500 mt-1">Re-verify GSTIN with government portal</p>
+            </div>
+            <button onclick="closeRefreshModal()" class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <!-- Modal Content -->
+        <div id="refreshModalContent">
+            <!-- Loading State -->
+            <div id="refreshLoadingState" class="text-center py-8">
+                <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                </div>
+                <p class="text-sm font-medium text-gray-700">Requesting CAPTCHA...</p>
+                <p class="text-xs text-gray-500 mt-1">Please wait while we connect to GST portal</p>
+            </div>
+            
+            <!-- CAPTCHA Form -->
+            <div id="refreshCaptchaForm" class="hidden">
+                <div class="mb-4">
+                    <label class="text-sm font-bold text-gray-700 mb-2 block">GSTIN to refresh:</label>
+                    <div id="refreshGstinDisplay" class="px-4 py-3 bg-white/50 border border-white/60 rounded-xl font-mono text-sm font-bold text-gray-800 text-center"></div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="text-sm font-bold text-gray-700 mb-2 block">Enter CAPTCHA:</label>
+                    <div class="mb-3 flex justify-center">
+                        <div class="p-3 bg-white/50 border border-white/60 rounded-xl">
+                            <img id="refreshCaptchaImage" src="" alt="CAPTCHA" class="rounded-lg max-h-16">
+                        </div>
+                    </div>
+                    <input type="text" id="refreshCaptchaInput" 
+                           class="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none text-center font-mono text-lg font-bold"
+                           placeholder="Enter CAPTCHA text" maxlength="10">
+                </div>
+                
+                <div class="flex gap-3">
+                    <button onclick="submitRefresh()" 
+                            class="flex-1 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                        <i class="fa-solid fa-sync-alt mr-2"></i>Refresh Entry
+                    </button>
+                    <button onclick="refreshRefreshCaptcha()" 
+                            class="px-4 py-3 bg-white/50 text-gray-700 rounded-xl font-semibold hover:bg-white/80 transition-all">
+                        <i class="fa-solid fa-redo"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Result State -->
+            <div id="refreshResultState" class="hidden text-center py-8">
+                <div id="refreshResultIcon" class="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"></div>
+                <p id="refreshResultMessage" class="text-sm font-bold text-gray-900"></p>
+                <p id="refreshResultDetails" class="text-xs text-gray-500 mt-1"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Messages -->
+<div id="messageContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentRefreshGstin = null;
+    let currentRefreshSessionId = null;
+
+    window.startRefresh = function(gstin) {
+        currentRefreshGstin = gstin;
+        
+        document.getElementById('refreshModal').classList.remove('hidden');
+        document.getElementById('refreshLoadingState').classList.remove('hidden');
+        document.getElementById('refreshCaptchaForm').classList.add('hidden');
+        document.getElementById('refreshResultState').classList.add('hidden');
+        
+        document.getElementById('refreshGstinDisplay').textContent = gstin;
+        
+        requestRefreshCaptcha();
+    };
+
+    function requestRefreshCaptcha() {
+        fetch('{% url "request_captcha" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentRefreshSessionId = data.sessionId;
+                document.getElementById('refreshCaptchaImage').src = data.captchaImage;
+                document.getElementById('refreshCaptchaInput').value = '';
+                
+                document.getElementById('refreshLoadingState').classList.add('hidden');
+                document.getElementById('refreshCaptchaForm').classList.remove('hidden');
+                document.getElementById('refreshCaptchaInput').focus();
+            } else {
+                showRefreshResult(false, 'Failed to load CAPTCHA', data.error || 'Please try again');
+            }
+        })
+        .catch(error => {
+            showRefreshResult(false, 'Network error', 'Please try again later');
+        });
+    }
+
+    window.refreshRefreshCaptcha = function() {
+        document.getElementById('refreshCaptchaForm').classList.add('hidden');
+        document.getElementById('refreshLoadingState').classList.remove('hidden');
+        requestRefreshCaptcha();
+    };
+
+    window.submitRefresh = function() {
+        const captchaText = document.getElementById('refreshCaptchaInput').value.trim();
+        
+        if (!captchaText) {
+            showMessage('Please enter the CAPTCHA text', 'error');
+            return;
+        }
+        
+        document.getElementById('refreshCaptchaForm').classList.add('hidden');
+        document.getElementById('refreshLoadingState').classList.remove('hidden');
+        
+        fetch('{% url "refresh_gst_cache_entry" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                gstin: currentRefreshGstin,
+                session_id: currentRefreshSessionId,
+                captcha: captchaText
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showRefreshResult(true, 'Cache entry refreshed!', 'Reloading page...');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showRefreshResult(false, 'Refresh failed', data.error || 'Please try again');
+            }
+        })
+        .catch(error => {
+            showRefreshResult(false, 'Network error', 'Please try again later');
+        });
+    };
+
+    function showRefreshResult(success, message, details) {
+        document.getElementById('refreshLoadingState').classList.add('hidden');
+        document.getElementById('refreshCaptchaForm').classList.add('hidden');
+        document.getElementById('refreshResultState').classList.remove('hidden');
+        
+        const icon = document.getElementById('refreshResultIcon');
+        if (success) {
+            icon.className = 'w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-success/10';
+            icon.innerHTML = '<i class="fa-solid fa-check-circle text-3xl text-success"></i>';
+        } else {
+            icon.className = 'w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-error/10';
+            icon.innerHTML = '<i class="fa-solid fa-times-circle text-3xl text-error"></i>';
+        }
+        
+        document.getElementById('refreshResultMessage').textContent = message;
+        document.getElementById('refreshResultDetails').textContent = details;
+    }
+
+    window.closeRefreshModal = function() {
+        document.getElementById('refreshModal').classList.add('hidden');
+        currentRefreshGstin = null;
+        currentRefreshSessionId = null;
+    };
+
+    function showMessage(message, type) {
+        const container = document.getElementById('messageContainer');
+        const div = document.createElement('div');
+        div.className = `glass-panel p-4 rounded-xl border-l-4 ${type === 'error' ? 'border-error bg-error/5' : 'border-success bg-success/5'} animate-slide-in`;
+        div.innerHTML = `
+            <div class="flex items-center gap-3">
+                <i class="fa-solid ${type === 'error' ? 'fa-exclamation-circle text-error' : 'fa-check-circle text-success'}"></i>
+                <span class="text-sm font-medium text-gray-700">${message}</span>
+            </div>
+        `;
+        container.appendChild(div);
+        setTimeout(() => div.remove(), 5000);
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Handle Enter key in CAPTCHA input
+    document.getElementById('refreshCaptchaInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') submitRefresh();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeRefreshModal();
+    });
+    
+    // Close modal on backdrop click
+    document.getElementById('refreshModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeRefreshModal();
+    });
+});
+</script>
+{% endblock %}

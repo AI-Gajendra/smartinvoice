@@ -1316,7 +1316,7 @@ def gst_cache_management(request):
         'total_count': cache_entries.count(),
     }
     
-    return render(request, 'gst_cache.html', context)
+    return render(request, 'gst_cache_new.html', context)
 
 
 @login_required

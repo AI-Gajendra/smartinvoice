@@ -284,15 +284,15 @@
 
 
 <!-- Upload Modal -->
-<div id="upload-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-6 w-full max-w-md glass-panel rounded-3xl animate-slide-in mx-4">
+<div id="upload-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl animate-slide-in p-6 shadow-2xl">
         <!-- Modal Header -->
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h3 class="text-xl font-bold text-gray-900">Upload Invoice</h3>
                 <p class="text-sm text-gray-500 mt-1">Upload your invoice for automated processing</p>
             </div>
-            <button id="close-modal" class="w-10 h-10 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-white/50 flex items-center justify-center transition-colors">
+            <button id="close-modal" class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 flex items-center justify-center transition-colors">
                 <i class="fa-solid fa-times text-lg"></i>
             </button>
         </div>
@@ -348,15 +348,15 @@
 </div>
 
 <!-- CAPTCHA Modal for GST Verification -->
-<div id="captchaModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-6 w-full max-w-md glass-panel rounded-3xl animate-slide-in mx-4">
+<div id="captchaModal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl animate-slide-in p-6 shadow-2xl">
         <!-- Modal Header -->
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h3 class="text-xl font-bold text-gray-900">GST Verification</h3>
                 <p class="text-sm text-gray-500 mt-1">Verify GSTIN with government portal</p>
             </div>
-            <button onclick="closeCaptchaModal()" class="w-10 h-10 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-white/50 flex items-center justify-center transition-colors">
+            <button onclick="closeCaptchaModal()" class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 flex items-center justify-center transition-colors">
                 <i class="fa-solid fa-times text-lg"></i>
             </button>
         </div>
@@ -564,14 +564,25 @@
     }
     
     function fetchCaptcha() {
-        fetch('/api/gst/captcha/')
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                          document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+        
+        fetch('{% url "request_captcha" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     document.getElementById('gstinDisplay').value = currentGstin;
-                    document.getElementById('captchaImage').src = 'data:image/png;base64,' + data.captcha;
+                    document.getElementById('captchaImage').src = data.captchaImage;
                     document.getElementById('loadingState').classList.add('hidden');
                     document.getElementById('captchaForm').classList.remove('hidden');
+                    // Store session ID for verification
+                    window.currentSessionId = data.sessionId;
                 } else {
                     showVerificationResult(false, 'Failed to fetch CAPTCHA', data.error);
                 }
@@ -594,7 +605,7 @@
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
                           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
         
-        fetch('/api/gst/verify/', {
+        fetch('{% url "verify_gst" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -603,7 +614,8 @@
             body: JSON.stringify({
                 invoice_id: currentInvoiceId,
                 gstin: currentGstin,
-                captcha: captcha
+                captcha: captcha,
+                session_id: window.currentSessionId
             })
         })
         .then(response => response.json())
