@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart iInvoice</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#850E35', // Deep Maroon
+                        'secondary': '#EE6983', // Soft Rose
+                        'accent': '#FFC4C4', // Peach
+                        'bg-light': '#FFF5E4', // Off-White
+                        'surface': '#FFFFFF',
+                        'success': '#10B981',
+                        'warning': '#F59E0B',
+                        'error': '#EF4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                        'pulse-slow': 'pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'blob': 'blob 7s infinite'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideIn: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFF5E4;
+            overflow-x: hidden;
+        }
+
+        /* Liquid Background */
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #FFF5E4 0%, #FFC4C4 100%);
+        }
+
+        .blob {
+            position: absolute;
+            background: rgba(238, 105, 131, 0.3);
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: blob 7s infinite;
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            animation-delay: 0s;
+            background: rgba(133, 14, 53, 0.2);
+        }
+
+        .blob-2 {
+            top: 40%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            animation-delay: 2s;
+            background: rgba(238, 105, 131, 0.25);
+        }
+
+        .blob-3 {
+            bottom: -10%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            animation-delay: 4s;
+            background: rgba(255, 196, 196, 0.4);
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(133, 14, 53, 0.1);
+        }
+
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .sidebar-link {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255, 255, 255, 0.5);
+            color: #850E35;
+        }
+
+        .sidebar-link.active {
+            background: linear-gradient(90deg, rgba(133, 14, 53, 0.1) 0%, rgba(238, 105, 131, 0.1) 100%);
+            color: #850E35;
+            border-left: 3px solid #850E35;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(133, 14, 53, 0.2);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(133, 14, 53, 0.4);
+        }
+    </style>
+</head>
+
+<body class="text-gray-800 antialiased">
+
+    <!-- Fluid Background -->
+    <div class="liquid-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden relative">
+
+        <!-- Sidebar -->
+        <aside class="w-72 glass-sidebar z-30 hidden md:flex flex-col transition-all duration-300" id="sidebar">
+            <!-- Logo Area -->
+            <div class="h-24 flex items-center justify-center border-b border-white/30">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                        <i class="fa-solid fa-file-invoice text-xl"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-primary tracking-tight">
+                        Smart<span class="font-light">Invoice</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto py-8 px-4 space-y-2">
+                <p class="px-4 text-xs font-bold text-primary/60 uppercase tracking-widest mb-4">Main Menu</p>
+
+                <a href="dashboard.html"
+                    class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 active">
+                    <i class="fa-solid fa-chart-pie w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="invoices.html"
+                    class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600">
+                    <i class="fa-solid fa-file-lines w-5"></i>
+                    <span>Invoices</span>
+                </a>
+
+                <a href="clients.html"
+                    class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600">
+                    <i class="fa-solid fa-users w-5"></i>
+                    <span>Clients</span>
+                </a>
+
+                <a href="products.html"
+                    class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600">
+                    <i class="fa-solid fa-box w-5"></i>
+                    <span>Products</span>
+                </a>
+
+                <p class="px-4 text-xs font-bold text-primary/60 uppercase tracking-widest mt-8 mb-4">System</p>
+
+                <a href="settings.html"
+                    class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600">
+                    <i class="fa-solid fa-gear w-5"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Snippet -->
+            <div class="p-6 border-t border-white/30">
+                <div
+                    class="glass-panel p-3 rounded-2xl flex items-center gap-3 cursor-pointer hover:bg-white/40 transition-colors">
+                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=850E35&color=fff" alt="User"
+                        class="w-10 h-10 rounded-xl shadow-sm">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-gray-900 truncate">Admin User</p>
+                        <p class="text-xs text-gray-500 truncate">admin@smart.com</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-primary/50 text-xs"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+
+            <!-- Top Bar -->
+            <header class="h-24 z-20 flex items-center justify-between px-8 lg:px-12">
+                <!-- Left: Mobile Toggle & Search -->
+                <div class="flex items-center gap-6">
+                    <button class="md:hidden p-2 text-primary hover:bg-white/20 rounded-xl transition-colors">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+
+                    <div class="relative hidden sm:block group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i
+                                class="fa-solid fa-search text-primary/40 group-focus-within:text-primary transition-colors"></i>
+                        </div>
+                        <input type="text" placeholder="Search anything..."
+                            class="pl-11 pr-4 py-3 w-80 glass-panel rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/60 transition-all placeholder-primary/30 text-gray-700">
+                    </div>
+                </div>
+
+                <!-- Right: Actions -->
+                <div class="flex items-center gap-6">
+                    <button
+                        class="w-12 h-12 rounded-2xl glass-panel text-primary/60 hover:text-primary hover:bg-white/60 transition-all flex items-center justify-center relative group">
+                        <i class="fa-regular fa-bell text-xl group-hover:animate-swing"></i>
+                        <span
+                            class="absolute top-3 right-3 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-white"></span>
+                    </button>
+
+                    <button
+                        class="px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all transform flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Create Invoice</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Scrollable Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto px-8 lg:px-12 pb-8 scroll-smooth">
+                <!-- Page Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 animate-fade-in">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Financial Overview</h1>
+                        <p class="text-gray-500 mt-2 font-medium">Welcome back, here's your daily breakdown.</p>
+                    </div>
+                    <div
+                        class="glass-panel px-5 py-2.5 rounded-xl flex items-center gap-3 text-sm font-medium text-gray-600 cursor-pointer hover:bg-white/50 transition-colors">
+                        <i class="fa-regular fa-calendar text-primary"></i>
+                        <span>This Month</span>
+                        <i class="fa-solid fa-chevron-down text-xs ml-1 opacity-50"></i>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-10 animate-slide-in">
+
+                    <!-- Card 1 -->
+                    <div class="glass-panel p-6 rounded-3xl hover:scale-[1.02] transition-transform duration-300 group">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-2">$54,230</h3>
+                            </div>
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 text-primary flex items-center justify-center text-2xl group-hover:bg-primary group-hover:text-white transition-colors duration-300 shadow-sm">
+                                <i class="fa-solid fa-dollar-sign"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center text-sm font-medium">
+                            <span class="text-success bg-success/10 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up text-xs"></i> +12.5%
+                            </span>
+                            <span class="text-gray-400 ml-3">vs last month</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="glass-panel p-6 rounded-3xl hover:scale-[1.02] transition-transform duration-300 group">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Invoices Sent</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-2">1,254</h3>
+                            </div>
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-gradient-to-br from-secondary/10 to-accent/20 text-secondary flex items-center justify-center text-2xl group-hover:bg-secondary group-hover:text-white transition-colors duration-300 shadow-sm">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center text-sm font-medium">
+                            <span class="text-success bg-success/10 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up text-xs"></i> +5.2%
+                            </span>
+                            <span class="text-gray-400 ml-3">vs last month</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="glass-panel p-6 rounded-3xl hover:scale-[1.02] transition-transform duration-300 group">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Pending</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-2">$12,450</h3>
+                            </div>
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-gradient-to-br from-warning/10 to-orange-100 text-warning flex items-center justify-center text-2xl group-hover:bg-warning group-hover:text-white transition-colors duration-300 shadow-sm">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center text-sm font-medium">
+                            <span class="text-warning bg-warning/10 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-minus text-xs"></i> 2.1%
+                            </span>
+                            <span class="text-gray-400 ml-3">vs last month</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="glass-panel p-6 rounded-3xl hover:scale-[1.02] transition-transform duration-300 group">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Clients</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-2">842</h3>
+                            </div>
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 text-blue-500 flex items-center justify-center text-2xl group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300 shadow-sm">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center text-sm font-medium">
+                            <span class="text-success bg-success/10 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up text-xs"></i> +8.4%
+                            </span>
+                            <span class="text-gray-400 ml-3">vs last month</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts & Tables Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 animate-slide-in"
+                    style="animation-delay: 0.1s;">
+
+                    <!-- Chart Section -->
+                    <div class="lg:col-span-2 glass-panel p-8 rounded-3xl">
+                        <div class="flex justify-between items-center mb-8">
+                            <h3 class="text-xl font-bold text-gray-900">Revenue Analytics</h3>
+                            <button
+                                class="w-10 h-10 rounded-xl hover:bg-black/5 flex items-center justify-center text-gray-400 transition-colors">
+                                <i class="fa-solid fa-ellipsis"></i>
+                            </button>
+                        </div>
+                        <div class="h-80 w-full">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="glass-panel p-8 rounded-3xl">
+                        <h3 class="text-xl font-bold text-gray-900 mb-8">Recent Invoices</h3>
+                        <div class="space-y-6">
+                            <!-- Item 1 -->
+                            <div class="flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+                                        JD
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                                            John Doe
+                                        </p>
+                                        <p class="text-xs text-gray-500 font-medium">#INV-001</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold text-gray-900">$1,200</p>
+                                    <span
+                                        class="text-[10px] font-bold uppercase tracking-wider text-success bg-success/10 px-2 py-1 rounded-md">Paid</span>
+                                </div>
+                            </div>
+
+                            <!-- Item 2 -->
+                            <div class="flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm group-hover:bg-secondary group-hover:text-white transition-colors shadow-sm">
+                                        AS
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                                            Alice
+                                            Smith</p>
+                                        <p class="text-xs text-gray-500 font-medium">#INV-002</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold text-gray-900">$850</p>
+                                    <span
+                                        class="text-[10px] font-bold uppercase tracking-wider text-warning bg-warning/10 px-2 py-1 rounded-md">Pending</span>
+                                </div>
+                            </div>
+
+                            <!-- Item 3 -->
+                            <div class="flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center font-bold text-sm group-hover:bg-blue-500 group-hover:text-white transition-colors shadow-sm">
+                                        MK
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                                            Mike K.
+                                        </p>
+                                        <p class="text-xs text-gray-500 font-medium">#INV-003</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold text-gray-900">$2,300</p>
+                                    <span
+                                        class="text-[10px] font-bold uppercase tracking-wider text-error bg-error/10 px-2 py-1 rounded-md">Overdue</span>
+                                </div>
+                            </div>
+                            <!-- Item 4 -->
+                            <div class="flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="w-12 h-12 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm group-hover:bg-gray-800 group-hover:text-white transition-colors shadow-sm">
+                                        LC
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                                            Lara Croft
+                                        </p>
+                                        <p class="text-xs text-gray-500 font-medium">#INV-004</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold text-gray-900">$4,120</p>
+                                    <span
+                                        class="text-[10px] font-bold uppercase tracking-wider text-success bg-success/10 px-2 py-1 rounded-md">Paid</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            class="w-full mt-8 py-3 text-sm font-bold text-primary hover:text-white hover:bg-primary transition-all border border-primary/20 rounded-xl hover:shadow-lg hover:shadow-primary/20">
+                            View All Invoices
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Large Table Section -->
+                <div class="glass-panel rounded-3xl overflow-hidden animate-slide-in" style="animation-delay: 0.2s;">
+                    <div class="p-8 border-b border-white/40 flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-gray-900">Latest Transactions</h3>
+                        <div class="flex gap-3">
+                            <button
+                                class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white/50 rounded-xl transition-colors">Filter</button>
+                            <button
+                                class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white/50 rounded-xl transition-colors">Export</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white/20 text-xs uppercase tracking-wider text-gray-500 font-bold">
+                                    <th class="px-8 py-5">Invoice ID</th>
+                                    <th class="px-8 py-5">Client</th>
+                                    <th class="px-8 py-5">Date</th>
+                                    <th class="px-8 py-5">Amount</th>
+                                    <th class="px-8 py-5">Status</th>
+                                    <th class="px-8 py-5 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/40">
+                                <tr class="hover:bg-white/30 transition-colors group">
+                                    <td class="px-8 py-5 text-sm font-bold text-primary">#INV-2023-001</td>
+                                    <td class="px-8 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://ui-avatars.com/api/?name=Robert+Fox&background=random"
+                                                class="w-10 h-10 rounded-xl shadow-sm" alt="">
+                                            <span class="text-sm font-semibold text-gray-900">Robert Fox</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5 text-sm text-gray-500 font-medium">Oct 24, 2023</td>
+                                    <td class="px-8 py-5 text-sm font-bold text-gray-900">$1,450.00</td>
+                                    <td class="px-8 py-5">
+                                        <span
+                                            class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-success/10 text-success border border-success/20">
+                                            Completed
+                                        </span>
+                                    </td>
+                                    <td class="px-8 py-5 text-right">
+                                        <button
+                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-white/50 transition-colors"><i
+                                                class="fa-solid fa-eye"></i></button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-white/30 transition-colors group">
+                                    <td class="px-8 py-5 text-sm font-bold text-primary">#INV-2023-002</td>
+                                    <td class="px-8 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://ui-avatars.com/api/?name=Cody+Fisher&background=random"
+                                                class="w-10 h-10 rounded-xl shadow-sm" alt="">
+                                            <span class="text-sm font-semibold text-gray-900">Cody Fisher</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5 text-sm text-gray-500 font-medium">Oct 22, 2023</td>
+                                    <td class="px-8 py-5 text-sm font-bold text-gray-900">$6,200.00</td>
+                                    <td class="px-8 py-5">
+                                        <span
+                                            class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-warning/10 text-warning border border-warning/20">
+                                            Pending
+                                        </span>
+                                    </td>
+                                    <td class="px-8 py-5 text-right">
+                                        <button
+                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-white/50 transition-colors"><i
+                                                class="fa-solid fa-eye"></i></button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-white/30 transition-colors group">
+                                    <td class="px-8 py-5 text-sm font-bold text-primary">#INV-2023-003</td>
+                                    <td class="px-8 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://ui-avatars.com/api/?name=Esther+Howard&background=random"
+                                                class="w-10 h-10 rounded-xl shadow-sm" alt="">
+                                            <span class="text-sm font-semibold text-gray-900">Esther Howard</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5 text-sm text-gray-500 font-medium">Oct 20, 2023</td>
+                                    <td class="px-8 py-5 text-sm font-bold text-gray-900">$3,150.00</td>
+                                    <td class="px-8 py-5">
+                                        <span
+                                            class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-error/10 text-error border border-error/20">
+                                            Failed
+                                        </span>
+                                    </td>
+                                    <td class="px-8 py-5 text-right">
+                                        <button
+                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-white/50 transition-colors"><i
+                                                class="fa-solid fa-eye"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js Initialization
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+
+        // Gradient for Chart
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(133, 14, 53, 0.4)'); // Primary color with opacity
+        gradient.addColorStop(1, 'rgba(133, 14, 53, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                datasets: [{
+                    label: 'Revenue',
+                    data: [12000, 19000, 15000, 25000, 22000, 30000, 45000],
+                    borderColor: '#850E35',
+                    backgroundColor: gradient,
+                    borderWidth: 4,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#850E35',
+                    pointBorderWidth: 3,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        titleColor: '#1f2937',
+                        bodyColor: '#4b5563',
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1,
+                        padding: 14,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 14 },
+                        cornerRadius: 12,
+                        displayColors: false,
+                        boxPadding: 6
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            borderDash: [8, 8]
+                        },
+                        ticks: {
+                            color: '#9ca3af',
+                            font: { size: 12, weight: '500' },
+                            padding: 10
+                        },
+                        border: { display: false }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#9ca3af',
+                            font: { size: 12, weight: '500' },
+                            padding: 10
+                        },
+                        border: { display: false }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

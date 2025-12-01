@@ -1,0 +1,527 @@
+import os
+import json
+import logging
+import time
+from typing import Dict, Any, Optional
+from decouple import config
+from google import genai
+from google.genai import types
+from PIL import Image
+import io
+import fitz  # PyMuPDF for PDF processing
+
+logger = logging.getLogger(__name__)
+
+
+class GeminiService:
+    """Service for extracting invoice data using Google Gemini API"""
+    
+    def __init__(self, use_key_manager=True):
+        """
+        Initialize Gemini service with API key management
+        
+        Args:
+            use_key_manager: If True, use APIKeyManager for automatic failover.
+                           If False, use single key from environment (backward compatibility)
+        """
+        self.use_key_manager = use_key_manager
+        self.api_key_manager = None
+        self.client = None
+        
+        if use_key_manager:
+            try:
+                from invoice_processor.services.api_key_manager import api_key_manager
+                self.api_key_manager = api_key_manager
+                # Get initial key
+                api_key = self.api_key_manager.get_active_key()
+                if not api_key:
+                    raise ValueError("No active API keys available in the pool")
+                self.client = genai.Client(api_key=api_key)
+                logger.info("GeminiService initialized with API key manager")
+            except Exception as e:
+                logger.warning(f"Failed to initialize API key manager: {e}. Falling back to single key.")
+                self.use_key_manager = False
+        
+        if not self.use_key_manager:
+            # Fallback to single key for backward compatibility
+            self.api_key = config('GEMINI_API_KEY', default=None)
+            if not self.api_key:
+                raise ValueError("GEMINI_API_KEY environment variable is required")
+            self.client = genai.Client(api_key=self.api_key)
+            logger.info("GeminiService initialized with single API key")
+        
+        self.model_name = 'gemini-2.5-flash'
+        
+        # Configuration for API calls
+        self.max_retries = 1
+        self.timeout_seconds = 30
+        
+    def extract_data_from_image(self, image_file) -> Dict[str, Any]:
+        """
+        Extract structured invoice data from an image file using Gemini API
+        
+        Args:
+            image_file: Uploaded file object (image or PDF)
+            
+        Returns:
+            dict: Extracted invoice data or {"is_invoice": false} if not an invoice
+        """
+        try:
+            # Process the image file
+            image = self._process_image_file(image_file)
+            if not image:
+                logger.error("Failed to process uploaded image file")
+                return {
+                    "is_invoice": False, 
+                    "error": "Unable to process the uploaded file. Please ensure it's a valid image or PDF.",
+                    "error_code": "FILE_PROCESSING_ERROR"
+                }
+            
+            # Create structured prompt for invoice extraction
+            prompt = self._create_extraction_prompt()
+            
+            # Call Gemini API with retry logic
+            response = self._call_gemini_api(prompt, image)
+            
+            if not response:
+                logger.error("Failed to get response from Gemini API after retries")
+                return {
+                    "is_invoice": False, 
+                    "error": "Invoice extraction service is temporarily unavailable. Please try again in a few moments.",
+                    "error_code": "API_UNAVAILABLE"
+                }
+            
+            # Parse and validate the response
+            extracted_data = self._parse_gemini_response(response)
+            
+            return extracted_data
+            
+        except ValueError as e:
+            logger.error(f"Validation error in extract_data_from_image: {str(e)}")
+            return {
+                "is_invoice": False, 
+                "error": "Invalid file format or corrupted file. Please upload a clear image or PDF.",
+                "error_code": "VALIDATION_ERROR"
+            }
+        except MemoryError as e:
+            logger.error(f"Memory error processing large file: {str(e)}")
+            return {
+                "is_invoice": False, 
+                "error": "File is too large to process. Please upload a smaller file (under 10MB).",
+                "error_code": "FILE_TOO_LARGE"
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error in extract_data_from_image: {str(e)}")
+            return {
+                "is_invoice": False, 
+                "error": "An unexpected error occurred while processing your invoice. Please try again.",
+                "error_code": "UNEXPECTED_ERROR"
+            } 
+   
+    def _process_image_file(self, image_file) -> Optional[Image.Image]:
+        """
+        Process uploaded file and convert to PIL Image
+        Supports both image files (PNG, JPG, JPEG) and PDF files
+        
+        Args:
+            image_file: Uploaded file object
+            
+        Returns:
+            PIL.Image: Processed image or None if processing fails
+        """
+        try:
+            # Reset file pointer to beginning
+            image_file.seek(0)
+            
+            # Read file content
+            file_content = image_file.read()
+            
+            # Check if it's a PDF file
+            if file_content.startswith(b'%PDF'):
+                logger.info("Processing PDF file")
+                return self._convert_pdf_to_image(file_content)
+            else:
+                logger.info("Processing image file")
+                return self._process_image_content(file_content)
+            
+        except Exception as e:
+            logger.error(f"Error processing file: {str(e)}")
+            return None
+    
+    def _convert_pdf_to_image(self, pdf_content: bytes) -> Optional[Image.Image]:
+        """
+        Convert PDF to image using PyMuPDF
+        
+        Args:
+            pdf_content: PDF file content as bytes
+            
+        Returns:
+            PIL.Image: First page of PDF as image or None if conversion fails
+        """
+        try:
+            # Open PDF from memory
+            pdf_document = fitz.open(stream=pdf_content, filetype="pdf")
+            
+            if pdf_document.page_count == 0:
+                logger.error("PDF has no pages")
+                return None
+            
+            # Get first page
+            page = pdf_document[0]
+            
+            # Convert to image with high resolution
+            mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better quality
+            pix = page.get_pixmap(matrix=mat)
+            
+            # Convert to PIL Image
+            img_data = pix.tobytes("png")
+            image = Image.open(io.BytesIO(img_data))
+            
+            # Convert to RGB if necessary
+            if image.mode in ('RGBA', 'LA', 'P'):
+                image = image.convert('RGB')
+            
+            pdf_document.close()
+            logger.info(f"Successfully converted PDF to image: {image.size}")
+            
+            return image
+            
+        except Exception as e:
+            logger.error(f"Error converting PDF to image: {str(e)}")
+            return None
+    
+    def _process_image_content(self, file_content: bytes) -> Optional[Image.Image]:
+        """
+        Process image file content
+        
+        Args:
+            file_content: Image file content as bytes
+            
+        Returns:
+            PIL.Image: Processed image or None if processing fails
+        """
+        try:
+            # Create PIL Image from file content
+            image = Image.open(io.BytesIO(file_content))
+            
+            # Convert to RGB if necessary (for PNG with transparency)
+            if image.mode in ('RGBA', 'LA', 'P'):
+                image = image.convert('RGB')
+            
+            logger.info(f"Successfully processed image: {image.size}")
+            return image
+            
+        except Exception as e:
+            logger.error(f"Error processing image content: {str(e)}")
+            return None
+    
+    def _create_extraction_prompt(self) -> str:
+        """
+        Create structured prompt for invoice data extraction
+        
+        Returns:
+            str: Formatted prompt for Gemini API
+        """
+        return '''
+You are an expert invoice data extraction system. Analyze the provided image and extract invoice information.
+
+IMPORTANT INSTRUCTIONS:
+1. First determine if this image contains an invoice. If not, return {"is_invoice": false}
+2. If it is an invoice, extract the following fields exactly as specified
+3. Return ONLY valid JSON - no additional text or explanations
+4. Use null for any field that is not present or clearly readable
+5. Never invent or guess data - only extract what is clearly visible
+
+Required JSON structure:
+{
+    "is_invoice": true,
+    "invoice_id": "string or null",
+    "invoice_date": "YYYY-MM-DD format or null",
+    "vendor_name": "string or null",
+    "vendor_gstin": "15-character GST number or null",
+    "billed_company_gstin": "15-character GST number or null",
+    "grand_total": "decimal number or null",
+    "line_items": [
+        {
+            "description": "string or null",
+            "hsn_sac_code": "string or null",
+            "quantity": "decimal number or null",
+            "unit_price": "decimal number or null",
+            "billed_gst_rate": "decimal percentage (e.g., 18.0) or null",
+            "line_total": "decimal number or null"
+        }
+    ]
+}
+
+Extract data carefully and return only the JSON response.
+''' 
+   
+    def _call_gemini_api(self, prompt: str, image: Image.Image) -> Optional[str]:
+        """
+        Call Gemini API with retry logic, error handling, and automatic key failover
+        
+        Args:
+            prompt: Extraction prompt
+            image: PIL Image object
+            
+        Returns:
+            str: API response text or None if failed
+        """
+        last_error = None
+        
+        for attempt in range(self.max_retries + 1):
+            try:
+                logger.info(f"Calling Gemini API (attempt {attempt + 1}/{self.max_retries + 1})")
+                
+                # Convert PIL Image to bytes for the new API
+                img_byte_arr = io.BytesIO()
+                image.save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+                image_bytes = img_byte_arr.getvalue()
+                
+                # Create image part using the new API
+                image_part = types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type='image/png'
+                )
+                
+                # Generate content using the new Gemini client
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=[prompt, image_part]
+                )
+                
+                if response and response.text:
+                    logger.info("Successfully received response from Gemini API")
+                    return response.text.strip()
+                else:
+                    logger.warning(f"Empty response from Gemini API on attempt {attempt + 1}")
+                    last_error = "Empty response from API"
+                    
+            except Exception as e:
+                error_msg = str(e)
+                last_error = error_msg
+                
+                # Check if this is a quota/rate limit error
+                is_quota_error = "quota" in error_msg.lower() or "rate" in error_msg.lower() or "429" in error_msg
+                
+                # Log specific error types for better debugging
+                if is_quota_error:
+                    logger.error(f"Rate limit/quota exceeded on attempt {attempt + 1}: {error_msg}")
+                    
+                    # Try to failover to next key if using key manager
+                    if self.use_key_manager and self.api_key_manager:
+                        if self._try_failover_to_next_key():
+                            logger.info("Successfully failed over to next API key, retrying immediately")
+                            continue  # Retry immediately with new key
+                        else:
+                            logger.error("Failover failed: No more active API keys available")
+                            return None  # No point in retrying if all keys are exhausted
+                            
+                elif "timeout" in error_msg.lower():
+                    logger.error(f"Timeout error on attempt {attempt + 1}: {error_msg}")
+                elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                    logger.error(f"Network error on attempt {attempt + 1}: {error_msg}")
+                else:
+                    logger.error(f"Gemini API call failed on attempt {attempt + 1}: {error_msg}")
+                
+                # If this is not the last attempt, wait before retrying
+                if attempt < self.max_retries:
+                    wait_time = 2 ** attempt  # Exponential backoff
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+        
+        logger.error(f"All Gemini API attempts failed. Last error: {last_error}")
+        return None
+    
+    def _try_failover_to_next_key(self) -> bool:
+        """
+        Attempt to failover to the next available API key
+        
+        Returns:
+            bool: True if failover successful, False if no keys available
+        """
+        try:
+            # Mark current key as exhausted (get it from the client)
+            # Note: We can't easily get the current key from the client, so we'll just get a new one
+            new_key = self.api_key_manager.get_active_key()
+            
+            if new_key:
+                # Reinitialize client with new key
+                self.client = genai.Client(api_key=new_key)
+                logger.info("Reinitialized Gemini client with new API key")
+                return True
+            else:
+                logger.error("No active API keys available for failover")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error during API key failover: {e}")
+            return False
+    
+    def _parse_gemini_response(self, response_text: str) -> Dict[str, Any]:
+        """
+        Parse and validate Gemini API response
+        
+        Args:
+            response_text: Raw response from Gemini API
+            
+        Returns:
+            dict: Parsed and validated invoice data
+        """
+        try:
+            # Clean the response text (remove any markdown formatting)
+            cleaned_text = response_text.strip()
+            if cleaned_text.startswith('```json'):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.endswith('```'):
+                cleaned_text = cleaned_text[:-3]
+            cleaned_text = cleaned_text.strip()
+            
+            # Parse JSON
+            data = json.loads(cleaned_text)
+            
+            # Validate required structure
+            if not isinstance(data, dict):
+                logger.error("Gemini response is not a valid JSON object")
+                return {
+                    "is_invoice": False, 
+                    "error": "Invalid response format from extraction service.",
+                    "error_code": "INVALID_RESPONSE_FORMAT"
+                }
+            
+            # Check if it's identified as an invoice
+            if not data.get('is_invoice', False):
+                logger.info("File was not identified as an invoice by Gemini")
+                return {
+                    "is_invoice": False,
+                    "error": "The uploaded file does not appear to be a valid invoice. Please upload a clear invoice image or PDF.",
+                    "error_code": "NOT_AN_INVOICE"
+                }
+            
+            # Validate and clean the extracted data
+            validated_data = self._validate_extracted_data(data)
+            
+            return validated_data
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {str(e)}")
+            logger.error(f"Raw response (first 500 chars): {response_text[:500]}")
+            return {
+                "is_invoice": False, 
+                "error": "Unable to process the invoice data. The image may be unclear or corrupted.",
+                "error_code": "JSON_PARSE_ERROR"
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error parsing Gemini response: {str(e)}")
+            return {
+                "is_invoice": False, 
+                "error": "An error occurred while processing the invoice data. Please try again.",
+                "error_code": "RESPONSE_PROCESSING_ERROR"
+            }    
+
+    def _validate_extracted_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate and clean extracted invoice data
+        
+        Args:
+            data: Raw extracted data from Gemini
+            
+        Returns:
+            dict: Validated and cleaned invoice data
+        """
+        validated = {
+            "is_invoice": True,
+            "invoice_id": self._clean_string(data.get('invoice_id')),
+            "invoice_date": self._clean_date(data.get('invoice_date')),
+            "vendor_name": self._clean_string(data.get('vendor_name')),
+            "vendor_gstin": self._clean_gstin(data.get('vendor_gstin')),
+            "billed_company_gstin": self._clean_gstin(data.get('billed_company_gstin')),
+            "grand_total": self._clean_decimal(data.get('grand_total')),
+            "line_items": []
+        }
+        
+        # Validate line items
+        line_items = data.get('line_items', [])
+        if isinstance(line_items, list):
+            for item in line_items:
+                if isinstance(item, dict):
+                    validated_item = {
+                        "description": self._clean_string(item.get('description')),
+                        "hsn_sac_code": self._clean_string(item.get('hsn_sac_code')),
+                        "quantity": self._clean_decimal(item.get('quantity')),
+                        "unit_price": self._clean_decimal(item.get('unit_price')),
+                        "billed_gst_rate": self._clean_decimal(item.get('billed_gst_rate')),
+                        "line_total": self._clean_decimal(item.get('line_total'))
+                    }
+                    validated["line_items"].append(validated_item)
+        
+        return validated
+    
+    def _clean_string(self, value: Any) -> Optional[str]:
+        """Clean and validate string values"""
+        if value is None or value == "":
+            return None
+        if isinstance(value, str):
+            cleaned = value.strip()
+            return cleaned if cleaned else None
+        return str(value).strip() if str(value).strip() else None
+    
+    def _clean_date(self, value: Any) -> Optional[str]:
+        """Clean and validate date values"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            cleaned = value.strip()
+            # Basic date format validation (YYYY-MM-DD)
+            if len(cleaned) == 10 and cleaned.count('-') == 2:
+                return cleaned
+        return None
+    
+    def _clean_gstin(self, value: Any) -> Optional[str]:
+        """Clean and validate GSTIN values"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            cleaned = value.strip().upper()
+            # Basic GSTIN validation (15 characters)
+            if len(cleaned) == 15:
+                return cleaned
+        return None
+    
+    def _clean_decimal(self, value: Any) -> Optional[float]:
+        """Clean and validate decimal values"""
+        if value is None:
+            return None
+        try:
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                cleaned = value.strip().replace(',', '')
+                return float(cleaned) if cleaned else None
+        except (ValueError, TypeError):
+            pass
+        return None
+
+
+# Create a singleton instance for easy import
+# Use key manager by default for automatic failover
+try:
+    gemini_service = GeminiService(use_key_manager=True)
+except Exception as e:
+    logger.warning(f"Failed to initialize GeminiService with key manager: {e}")
+    # Fallback to single key mode
+    gemini_service = GeminiService(use_key_manager=False)
+
+
+def extract_data_from_image(image_file) -> Dict[str, Any]:
+    """
+    Convenience function for extracting invoice data from image
+    
+    Args:
+        image_file: Uploaded file object
+        
+    Returns:
+        dict: Extracted invoice data
+    """
+    return gemini_service.extract_data_from_image(image_file)
