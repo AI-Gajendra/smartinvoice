@@ -8,8 +8,7 @@ FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    ALLOWED_HOSTS="localhost,127.0.0.1,smartinvoice-p2hv.onrender.com,.onrender.com"
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Set work directory
 WORKDIR /app
@@ -50,7 +49,7 @@ ENV PATH=/home/smartinvoice/.local/bin:$PATH
 # Copy application code
 COPY --chown=smartinvoice:smartinvoice . .
 
-# Create necessary directories
+# Create necessary directories and set permissions
 RUN mkdir -p /app/logs /app/media /app/staticfiles /app/data && \
     chown -R smartinvoice:smartinvoice /app
 
@@ -67,5 +66,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
 
-# Default command - run with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "smartinvoice.wsgi:application"]
+# Create startup script that runs migrations then starts gunicorn
+CMD python manage.py migrate --noinput && gunicorn --bind 0.0.0.0:8000 --workers 2 --threads 4 smartinvoice.wsgi:application

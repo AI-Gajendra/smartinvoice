@@ -389,7 +389,7 @@ def register_view(request):
     else:
         form = CustomUserCreationForm()
     
-    return render(request, 'registration/register.html', {'form': form})
+    return render(request, 'registration/register_new.html', {'form': form})
 
 
 @login_required

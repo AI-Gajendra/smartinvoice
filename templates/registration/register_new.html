@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Smart iInvoice</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons - Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Config with Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#850E35',
+                        'secondary': '#EE6983',
+                        'accent': '#FFC4C4',
+                        'bg-light': '#FFF5E4',
+                        'surface': '#FFFFFF',
+                        'success': '#10B981',
+                        'warning': '#F59E0B',
+                        'error': '#EF4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                        'blob': 'blob 7s infinite'
+                    },
+                    keyframes: {
+                        fadeIn: { 
+                            '0%': { opacity: '0' }, 
+                            '100%': { opacity: '1' } 
+                        },
+                        slideIn: { 
+                            '0%': { transform: 'translateY(20px)', opacity: '0' }, 
+                            '100%': { transform: 'translateY(0)', opacity: '1' } 
+                        },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFF5E4;
+        }
+
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #FFF5E4 0%, #FFC4C4 100%);
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: blob 7s infinite;
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            animation-delay: 0s;
+            background: rgba(133, 14, 53, 0.2);
+        }
+
+        .blob-2 {
+            top: 40%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            animation-delay: 2s;
+            background: rgba(238, 105, 131, 0.25);
+        }
+
+        .blob-3 {
+            bottom: -10%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            animation-delay: 4s;
+            background: rgba(255, 196, 196, 0.4);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 40px rgba(133, 14, 53, 0.15);
+        }
+    </style>
+</head>
+
+<body class="antialiased min-h-screen flex items-center justify-center relative overflow-hidden py-8">
+    <!-- Liquid Background with Animated Blobs -->
+    <div class="liquid-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Registration Card -->
+    <div class="glass-card p-8 md:p-10 rounded-3xl w-full max-w-lg animate-slide-in relative z-10 mx-4">
+        <!-- Logo -->
+        <div class="flex flex-col items-center mb-8">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30 mb-5">
+                <i class="fa-solid fa-user-plus text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Create Account</h1>
+            <p class="text-gray-500 mt-2 font-medium">Join Smart iInvoice today</p>
+        </div>
+
+        <!-- Error Messages -->
+        {% if form.non_field_errors %}
+        <div class="mb-6 p-4 rounded-xl border border-error/30 bg-error/5">
+            <div class="flex items-center">
+                <i class="fa-solid fa-exclamation-circle text-error mr-3"></i>
+                <p class="text-error text-sm font-medium">{{ form.non_field_errors.0 }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Registration Form -->
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            
+            <!-- Name Fields Row -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- First Name -->
+                <div>
+                    <label for="id_first_name" class="block text-sm font-bold text-gray-700 mb-2 ml-1">First Name</label>
+                    <div class="relative group">
+                        <i class="fa-regular fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                        <input type="text" 
+                               id="id_first_name" 
+                               name="first_name" 
+                               placeholder="John"
+                               value="{{ form.first_name.value|default:'' }}"
+                               class="pl-12 pr-4 py-3 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800">
+                    </div>
+                    {% if form.first_name.errors %}
+                    <p class="mt-1 text-xs text-error ml-1">{{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Last Name -->
+                <div>
+                    <label for="id_last_name" class="block text-sm font-bold text-gray-700 mb-2 ml-1">Last Name</label>
+                    <div class="relative group">
+                        <i class="fa-regular fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                        <input type="text" 
+                               id="id_last_name" 
+                               name="last_name" 
+                               placeholder="Doe"
+                               value="{{ form.last_name.value|default:'' }}"
+                               class="pl-12 pr-4 py-3 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800">
+                    </div>
+                    {% if form.last_name.errors %}
+                    <p class="mt-1 text-xs text-error ml-1">{{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Username Field -->
+            <div>
+                <label for="id_username" class="block text-sm font-bold text-gray-700 mb-2 ml-1">Username</label>
+                <div class="relative group">
+                    <i class="fa-solid fa-at absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="text" 
+                           id="id_username" 
+                           name="username" 
+                           placeholder="johndoe"
+                           value="{{ form.username.value|default:'' }}"
+                           class="pl-12 pr-4 py-3 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800"
+                           required>
+                </div>
+                {% if form.username.errors %}
+                <p class="mt-1 text-xs text-error ml-1">{{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Email Field -->
+            <div>
+                <label for="id_email" class="block text-sm font-bold text-gray-700 mb-2 ml-1">Email Address</label>
+                <div class="relative group">
+                    <i class="fa-regular fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="email" 
+                           id="id_email" 
+                           name="email" 
+                           placeholder="john@example.com"
+                           value="{{ form.email.value|default:'' }}"
+                           class="pl-12 pr-4 py-3 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800"
+                           required>
+                </div>
+                {% if form.email.errors %}
+                <p class="mt-1 text-xs text-error ml-1">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Password Field -->
+            <div>
+                <label for="id_password1" class="block text-sm font-bold text-gray-700 mb-2 ml-1">Password</label>
+                <div class="relative group">
+                    <i class="fa-solid fa-lock absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="password" 
+                           id="id_password1" 
+                           name="password1" 
+                           placeholder="••••••••"
+                           class="pl-12 pr-4 py-3 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800"
+                           required>
+                </div>
+                {% if form.password1.errors %}
+                <p class="mt-1 text-xs text-error ml-1">{{ form.password1.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div>
+                <label for="id_password2" class="block text-sm font-bold text-gray-700 mb-2 ml-1">Confirm Password</label>
+                <div class="relative group">
+                    <i class="fa-solid fa-lock absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="password" 
+                           id="id_password2" 
+                           name="password2" 
+                           placeholder="••••••••"
+                           class="pl-12 pr-4 py-3 w-full bg-white/50 border border-white/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all outline-none placeholder-gray-400 font-medium text-gray-800"
+                           required>
+                </div>
+                {% if form.password2.errors %}
+                <p class="mt-1 text-xs text-error ml-1">{{ form.password2.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit"
+                    class="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-bold text-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] transition-all transform active:scale-95 mt-6">
+                <i class="fa-solid fa-user-plus mr-2"></i>
+                Create Account
+            </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="relative my-8">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300/50"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-4 bg-white/40 backdrop-blur-sm rounded-full text-gray-500 font-medium">Already have an account?</span>
+            </div>
+        </div>
+
+        <!-- Sign In Link -->
+        <p class="text-center text-sm text-gray-500 font-medium">
+            <a href="{% url 'login' %}" class="font-bold text-primary hover:text-secondary transition-colors">Sign in here</a>
+        </p>
+    </div>
+</body>
+</html>

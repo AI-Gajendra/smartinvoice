@@ -26,7 +26,12 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-5udji+%=19&cd=8626m$c
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver,smartinvoice-p2hv.onrender.com,.onrender.com').split(',')
+# For production on Render, allow all hosts (Render handles security at proxy level)
+_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '')
+if _allowed_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['*']  # Allow all hosts when not specified
 
 
 # Application definition
