@@ -399,76 +399,91 @@
                 }
             });
         }
-    });
-    
-    // Upload Modal Logic
-    const uploadModal = document.getElementById('upload-modal');
-    const uploadBtn = document.getElementById('upload-btn');
-    const demoUploadBtn = document.getElementById('demo-upload-btn');
-    const closeModal = document.getElementById('close-modal');
-    const uploadArea = document.getElementById('upload-area');
-    const fileInput = document.getElementById('file-input');
-    
-    // Open modal function
-    function openUploadModal() {
-        uploadModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    // Open modal from header button
-    uploadBtn?.addEventListener('click', openUploadModal);
-    
-    // Open modal from demo banner button
-    demoUploadBtn?.addEventListener('click', openUploadModal);
-    
-    // Close modal
-    closeModal?.addEventListener('click', function() {
-        uploadModal.classList.add('hidden');
-        document.body.style.overflow = '';
-        resetUploadState();
-    });
-    
-    // Click outside to close
-    uploadModal?.addEventListener('click', function(e) {
-        if (e.target === uploadModal) {
-            uploadModal.classList.add('hidden');
-            document.body.style.overflow = '';
-            resetUploadState();
+        
+        // Upload Modal Logic - inside DOMContentLoaded
+        const uploadModal = document.getElementById('upload-modal');
+        const uploadBtn = document.getElementById('upload-btn');
+        const demoUploadBtn = document.getElementById('demo-upload-btn');
+        const closeModal = document.getElementById('close-modal');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        
+        // Open modal function
+        function openUploadModal() {
+            if (uploadModal) {
+                uploadModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        // Open modal from header button
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', openUploadModal);
+        }
+        
+        // Open modal from demo banner button
+        if (demoUploadBtn) {
+            demoUploadBtn.addEventListener('click', openUploadModal);
+        }
+        
+        // Close modal
+        if (closeModal) {
+            closeModal.addEventListener('click', function() {
+                uploadModal.classList.add('hidden');
+                document.body.style.overflow = '';
+                resetUploadState();
+            });
+        }
+        
+        // Click outside to close
+        if (uploadModal) {
+            uploadModal.addEventListener('click', function(e) {
+                if (e.target === uploadModal) {
+                    uploadModal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    resetUploadState();
+                }
+            });
+        }
+        
+        // Upload area click
+        if (uploadArea) {
+            uploadArea.addEventListener('click', function() {
+                if (fileInput) fileInput.click();
+            });
+            
+            // Drag and drop
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('border-primary', 'bg-white/30');
+            });
+            
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('border-primary', 'bg-white/30');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('border-primary', 'bg-white/30');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileUpload(files[0]);
+                }
+            });
+        }
+        
+        // File input change
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    handleFileUpload(this.files[0]);
+                }
+            });
         }
     });
     
-    // Upload area click
-    uploadArea?.addEventListener('click', function() {
-        fileInput?.click();
-    });
-    
-    // Drag and drop
-    uploadArea?.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        uploadArea.classList.add('border-primary', 'bg-white/30');
-    });
-    
-    uploadArea?.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('border-primary', 'bg-white/30');
-    });
-    
-    uploadArea?.addEventListener('drop', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('border-primary', 'bg-white/30');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFileUpload(files[0]);
-        }
-    });
-    
-    // File input change
-    fileInput?.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            handleFileUpload(this.files[0]);
-        }
-    });
-    
+    // Upload helper functions (global scope for access)
     function handleFileUpload(file) {
         const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
         if (!validTypes.includes(file.type)) {

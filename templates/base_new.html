@@ -358,6 +358,22 @@
                     <span>Products</span>
                 </a>
 
+                <p class="px-4 text-xs font-bold text-primary/60 uppercase tracking-widest mt-8 mb-4">GST Tools</p>
+
+                <!-- GST Verification Link -->
+                <a href="{% url 'gst_verification' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'gst_verification' %}active{% endif %}">
+                    <i class="fa-solid fa-shield-halved w-5"></i>
+                    <span>GST Verification</span>
+                </a>
+
+                <!-- GST Cache Link -->
+                <a href="{% url 'gst_cache' %}" 
+                   class="sidebar-link flex items-center gap-4 px-6 py-3.5 rounded-2xl font-medium text-gray-600 {% if request.resolver_match.url_name == 'gst_cache' %}active{% endif %}">
+                    <i class="fa-solid fa-database w-5"></i>
+                    <span>GST Cache</span>
+                </a>
+
                 <p class="px-4 text-xs font-bold text-primary/60 uppercase tracking-widest mt-8 mb-4">System</p>
 
                 <!-- Settings Link -->
