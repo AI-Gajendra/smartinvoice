@@ -17,11 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy GST service requirements and install
-COPY "gst verification template/requirements.txt" .
+COPY gst_verification_template/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy GST service code
-COPY "gst verification template/" .
+COPY gst_verification_template/ .
 
 # Create non-root user
 RUN groupadd -r gstservice && useradd -r -g gstservice gstservice

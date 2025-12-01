@@ -1,10 +1,8 @@
 # ============================================================================
-# Smart iInvoice - Dockerfile
-# ============================================================================
-# Multi-stage build for optimized production image
+# Smart iInvoice - Dockerfile for Render Deployment
 # ============================================================================
 
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -27,21 +25,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ============================================================================
 # Builder stage - Install Python dependencies
 # ============================================================================
-FROM base as builder
+FROM base AS builder
 
 # Copy requirements first for better caching
 COPY requirements.txt .
-COPY "gst verification template/requirements.txt" ./gst_requirements.txt
 
 # Install Python dependencies
 RUN pip install --user -r requirements.txt && \
-    pip install --user -r gst_requirements.txt && \
-    pip install --user gunicorn
+    pip install --user gunicorn flask requests bs4 uvicorn asgiref
 
 # ============================================================================
 # Production stage
 # ============================================================================
-FROM base as production
+FROM base AS production
 
 # Create non-root user for security
 RUN groupadd -r smartinvoice && useradd -r -g smartinvoice smartinvoice
