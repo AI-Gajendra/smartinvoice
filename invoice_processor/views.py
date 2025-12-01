@@ -269,11 +269,38 @@ def dashboard_new(request):
         chart_labels.append(month_date.strftime('%b'))
         chart_data.append(float(month_revenue))
     
+    # If no real data exists, show mock data for demo purposes
+    if all(v == 0 for v in chart_data):
+        import random
+        random.seed(42)  # Consistent mock data
+        # Generate realistic looking revenue data for last 7 months
+        base_revenue = 45000
+        chart_data = []
+        for i in range(7):
+            # Create a growth trend with some variation
+            variation = random.uniform(0.8, 1.3)
+            growth_factor = 1 + (i * 0.05)  # 5% growth per month
+            mock_revenue = base_revenue * growth_factor * variation
+            chart_data.append(round(mock_revenue, 2))
+    
     # ===== RECENT INVOICES (4 most recent) =====
     recent_invoices = user_invoices.select_related('health_score').order_by('-uploaded_at')[:4]
     
     # ===== TRANSACTIONS (5 most recent for table) =====
     transactions = user_invoices.select_related('health_score').order_by('-uploaded_at')[:5]
+    
+    # ===== MOCK DATA FOR NEW USERS =====
+    # If user has no data, show demo values for a better first impression
+    is_new_user = user_invoices.count() == 0
+    if is_new_user:
+        total_revenue = Decimal('287450.00')
+        revenue_change = 12.5
+        invoices_count = 47
+        invoices_change = 8.3
+        pending_amount = Decimal('42300.00')
+        pending_change = -5.2
+        clients_count = 12
+        clients_change = 15.0
     
     context = {
         # Metric cards data
@@ -291,6 +318,8 @@ def dashboard_new(request):
         # Recent invoices and transactions
         'recent_invoices': recent_invoices,
         'transactions': transactions,
+        # Flag for new user (to show demo badge if needed)
+        'is_demo_data': is_new_user,
     }
     
     return render(request, 'dashboard_new.html', context)
@@ -786,7 +815,7 @@ def gst_verification(request):
         'total_count': invoices_qs.count(),
     }
     
-    return render(request, 'gst_verification.html', context)
+    return render(request, 'gst_verification_new.html', context)
 
 
 @login_required

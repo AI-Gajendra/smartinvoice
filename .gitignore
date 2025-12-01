@@ -331,7 +331,7 @@ temp/
 tmp/
 
 # Data files (keep structure, ignore content)
-data/*.json
+
 data/*.csv
 !data/.gitkeep
 
