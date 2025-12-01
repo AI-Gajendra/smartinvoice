@@ -16,7 +16,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        value: ".onrender.com,localhost"
+        value: "smartinvoice-p2hv.onrender.com,.onrender.com,localhost,127.0.0.1"
       - key: GEMINI_API_KEY
         sync: false  # Set manually in Render dashboard
       - key: GST_SERVICE_URL
